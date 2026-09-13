@@ -1,0 +1,85 @@
+import type { FastifyInstance } from 'fastify';
+import { ACTIVITIES, BUILDING_CONDITIONS } from '../config';
+import { authenticate } from '../middleware/auth';
+import { listSurveys, saveSurvey } from '../services/survey.service';
+import { AppError } from '../utils/errors';
+
+interface SurveyBody {
+  shop_id: string;
+  shop_name?: string;
+  activity?: string;
+  activity_other?: string;
+  building_condition?: string;
+  survey_lat?: number;
+  survey_lon?: number;
+}
+
+export function registerSurveyRoutes(app: FastifyInstance): void {
+  app.post<{ Body: SurveyBody }>(
+    '/api/surveys',
+    {
+      preHandler: [authenticate],
+      schema: {
+        body: {
+          type: 'object',
+          required: ['shop_id', 'activity', 'building_condition'],
+          additionalProperties: false,
+          properties: {
+            shop_id: { type: 'string', minLength: 1 },
+            shop_name: { type: 'string' },
+            activity: { type: 'string' },
+            activity_other: { type: 'string' },
+            building_condition: { type: 'string' },
+            survey_lat: { type: 'number' },
+            survey_lon: { type: 'number' }
+          }
+        }
+      }
+    },
+    async (request, reply) => {
+      const body = request.body!;
+      if (!ACTIVITIES.includes(body.activity as (typeof ACTIVITIES)[number])) {
+        throw new AppError(400, 'invalid_activity', 'نوع فعالیت انتخاب‌شده معتبر نیست.');
+      }
+      if (body.activity === 'سایر' && !body.activity_other?.trim()) {
+        throw new AppError(400, 'invalid_activity', 'لطفاً نوع فعالیت را در فیلد «سایر» وارد کنید.');
+      }
+      if (
+        !BUILDING_CONDITIONS.includes(body.building_condition as (typeof BUILDING_CONDITIONS)[number])
+      ) {
+        throw new AppError(400, 'invalid_condition', 'وضعیت ساختمان انتخاب‌شده معتبر نیست.');
+      }
+      const lat = body.survey_lat;
+      const lon = body.survey_lon;
+      if (lat !== undefined && (lat < -90 || lat > 90)) {
+        throw new AppError(400, 'invalid_gps', 'مختصات GPS معتبر نیست.');
+      }
+      if (lon !== undefined && (lon < -180 || lon > 180)) {
+        throw new AppError(400, 'invalid_gps', 'مختصات GPS معتبر نیست.');
+      }
+
+      const { survey, created } = await saveSurvey(request.user!.id, {
+        shop_id: body.shop_id,
+        shop_name: body.shop_name?.trim() || null,
+        activity: body.activity ?? null,
+        activity_other: body.activity_other?.trim() || null,
+        building_condition: body.building_condition ?? null,
+        survey_lat: lat ?? null,
+        survey_lon: lon ?? null
+      });
+
+      return reply.code(created ? 201 : 200).send({
+        ok: true,
+        created,
+        message: 'اطلاعات مغازه با موفقیت ذخیره شد.',
+        survey
+      });
+    }
+  );
+
+  app.get(
+    '/api/surveys',
+    { preHandler: [authenticate] },
+    async () => ({ surveys: await listSurveys() })
+  );
+}
