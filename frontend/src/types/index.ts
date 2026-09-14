@@ -85,3 +85,40 @@ export interface GithubStatus {
   };
   interval?: number;
 }
+
+export interface CategoryCount {
+  activity: string;
+  count: number;
+}
+
+export interface CategoryStatsResponse {
+  total: number;
+  categories: CategoryCount[];
+}
+
+export interface SurveyorStat {
+  id: number;
+  username: string;
+  role: Role;
+  survey_count: number;
+}
+
+export interface SurveyorStatsResponse {
+  totalSurveyed: number;
+  surveyors: SurveyorStat[];
+}
+
+export interface AppMessage {
+  id: number;
+  sender_id: number;
+  sender_username: string;
+  is_broadcast: boolean;
+  body: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface MessagesResponse {
+  messages: AppMessage[];
+  unread: number;
+}

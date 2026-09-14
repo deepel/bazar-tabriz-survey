@@ -1,18 +1,30 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError, downloadGeojson } from '../api/client';
+import CategoryStats from '../components/CategoryStats';
 import ErrorMessage from '../components/ErrorMessage';
 import Header from '../components/Header';
 import LoadingState from '../components/LoadingState';
+import MessagesPanel from '../components/MessagesPanel';
 import StatsCards from '../components/StatsCards';
+import SurveyorLeaderboard from '../components/SurveyorLeaderboard';
 import { useAuth } from '../hooks/useAuth';
-import type { GithubStatus, ShopsResponse, Stats, User } from '../types';
+import type {
+  CategoryStatsResponse,
+  GithubStatus,
+  ShopsResponse,
+  Stats,
+  SurveyorStatsResponse,
+  User
+} from '../types';
 import { formatDate, formatNumber } from '../utils/format';
 
 export default function AdminDashboard() {
   const auth = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
   const [users, setUsers] = useState<User[]>([]);
+  const [categoryStats, setCategoryStats] = useState<CategoryStatsResponse | null>(null);
+  const [surveyorStats, setSurveyorStats] = useState<SurveyorStatsResponse | null>(null);
   const [githubStatus, setGithubStatus] = useState<GithubStatus | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -21,14 +33,24 @@ export default function AdminDashboard() {
 
   const load = useCallback(async () => {
     try {
-      const [statsResult, usersResult, githubResult] = await Promise.all([
+      const [
+        statsResult,
+        usersResult,
+        githubResult,
+        categoryResult,
+        surveyorResult
+      ] = await Promise.all([
         api.get<Stats>('/api/stats'),
         api.get<{ users: User[] }>('/api/admin/users'),
-        api.get<GithubStatus>('/api/admin/github/status')
+        api.get<GithubStatus>('/api/admin/github/status'),
+        api.get<CategoryStatsResponse>('/api/admin/stats/categories'),
+        api.get<SurveyorStatsResponse>('/api/admin/stats/surveyors')
       ]);
       setStats(statsResult);
       setUsers(usersResult.users);
       setGithubStatus(githubResult);
+      setCategoryStats(categoryResult);
+      setSurveyorStats(surveyorResult);
       setError(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'دریافت اطلاعات پنل ناموفق بود.');
@@ -126,6 +148,30 @@ export default function AdminDashboard() {
         )}
 
         <StatsCards stats={stats} />
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <section className="card space-y-3">
+            <h2 className="text-sm font-bold">آمار بر اساس نوع فعالیت</h2>
+            <CategoryStats stats={categoryStats} />
+          </section>
+
+          <section className="card space-y-3">
+            <div className="mb-1 flex items-center justify-between">
+              <h2 className="text-sm font-bold">عملکرد ممیزان</h2>
+              {surveyorStats && (
+                <span className="text-xs text-slate-400">
+                  مجموع: {formatNumber(surveyorStats.totalSurveyed)}
+                </span>
+              )}
+            </div>
+            <SurveyorLeaderboard stats={surveyorStats} />
+          </section>
+        </div>
+
+        <section className="card">
+          <h2 className="mb-3 text-sm font-bold">ارسال پیام</h2>
+          <MessagesPanel users={users} />
+        </section>
 
         <div className="grid gap-4 lg:grid-cols-2">
           <section className="card space-y-3">

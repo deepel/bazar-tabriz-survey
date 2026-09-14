@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './hooks/useAuth';
 import AdminDashboard from './pages/AdminDashboard';
 import ImportGeoJSON from './pages/ImportGeoJSON';
 import Login from './pages/Login';
+import Messages from './pages/Messages';
 import SurveyMap from './pages/SurveyMap';
 
 function AuthGuard({ children, admin }: { children: React.ReactNode; admin?: boolean }) {
@@ -38,6 +39,14 @@ export default function App() {
             element={
               <AuthGuard>
                 <SurveyMap />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/messages"
+            element={
+              <AuthGuard>
+                <Messages />
               </AuthGuard>
             }
           />

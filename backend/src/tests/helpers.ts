@@ -40,7 +40,7 @@ export async function loginCookie(
 
 export function resetDb(): Promise<QueryResult> {
   return pool.query(
-    `TRUNCATE shops, surveys, app_meta RESTART IDENTITY CASCADE;
+    `TRUNCATE shops, surveys, messages, app_meta RESTART IDENTITY CASCADE;
      DELETE FROM users WHERE username NOT IN ('admin', 'jafari', 'moradi', 'kamali');`
   );
 }
@@ -92,6 +92,26 @@ export async function countShops(): Promise<number> {
 export async function countSurveys(): Promise<number> {
   const res = await pool.query('SELECT COUNT(*)::int AS n FROM surveys');
   return res.rows[0].n;
+}
+
+/** Returns the id of a seeded user by username. */
+export async function userIdByUsername(username: string): Promise<number> {
+  const res = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
+  return res.rows[0].id as number;
+}
+
+/** Inserts a survey for a shop directly, attributing it to a seed user. */
+export async function insertSurveyFor(
+  shopId: string,
+  activity: string,
+  surveyorUsername: string,
+  activityOther: string | null = null
+): Promise<void> {
+  await pool.query(
+    `INSERT INTO surveys (shop_id, shop_name, activity, activity_other, building_condition, surveyor_id)
+     VALUES ($1, 'مغازه ' || $1, $2, $3, 'سالم', (SELECT id FROM users WHERE username = $4))`,
+    [shopId, activity, activityOther, surveyorUsername]
+  );
 }
 
 // ---------------------------------------------------------------------------

@@ -12,7 +12,7 @@ import {
 } from '../config/constants';
 import { useAuth } from '../hooks/useAuth';
 import { useGeolocation } from '../hooks/useGeolocation';
-import type { GeoJsonFeature, OptionsResponse, ShopsResponse, Stats } from '../types';
+import type { GeoJsonFeature, MessagesResponse, OptionsResponse, ShopsResponse, Stats } from '../types';
 import { formatNumber } from '../utils/format';
 
 interface Viewport {
@@ -37,6 +37,14 @@ export default function SurveyMap() {
     buildingConditions: FALLBACK_BUILDING_CONDITIONS
   });
   const [viewport, setViewport] = useState<Viewport | null>(null);
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    api
+      .get<MessagesResponse>('/api/messages')
+      .then((res) => setUnread(res.unread))
+      .catch(() => undefined);
+  }, []);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -121,6 +129,18 @@ export default function SurveyMap() {
           <div className="flex items-center gap-4">
             <span>بررسی شده: {progress ?? '—'}</span>
             <nav className="flex items-center gap-1">
+              <Link
+                to="/messages"
+                className="btn-ghost relative px-2.5 py-1.5 text-xs"
+                aria-label={`پیام‌ها${unread > 0 ? `، ${unread} پیام خوانده‌نشده` : ''}`}
+              >
+                پیام‌ها
+                {unread > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+                    {formatNumber(unread)}
+                  </span>
+                )}
+              </Link>
               {auth.user?.role === 'admin' && (
                 <Link to="/admin" className="btn-ghost px-2.5 py-1.5 text-xs">
                   پنل مدیر
