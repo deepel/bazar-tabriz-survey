@@ -115,7 +115,7 @@ export default function SurveyMap() {
   }
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col supports-[height:100dvh]:h-dvh">
       <Header
         center={
           <div className="flex items-center gap-4">

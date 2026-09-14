@@ -84,7 +84,10 @@ export default function SurveyForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="card max-h-[70vh] overflow-y-auto shadow-lg">
+    <form
+      onSubmit={handleSubmit}
+      className="card max-h-[70vh] overflow-y-auto shadow-lg supports-[max-height:100dvh]:max-h-[70dvh]"
+    >
       <div className="mb-3 flex items-start justify-between">
         <div>
           <h2 className="text-sm font-bold">ثبت اطلاعات مغازه</h2>
