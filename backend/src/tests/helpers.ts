@@ -46,7 +46,10 @@ export function resetDb(): Promise<QueryResult> {
 }
 
 /** Inserts one shop row directly (WGS84 geometry near the bazaar). */
-export async function insertSimpleShop(shopId: string): Promise<void> {
+export async function insertSimpleShop(
+  shopId: string,
+  entityHandle: string | null = null
+): Promise<void> {
   const geometry = {
     type: 'Polygon',
     coordinates: [
@@ -68,7 +71,7 @@ export async function insertSimpleShop(shopId: string): Promise<void> {
       shopId,
       JSON.stringify(geometry),
       'fp_' + shopId,
-      null,
+      entityHandle,
       38.07,
       46.29,
       46.29,

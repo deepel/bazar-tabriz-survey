@@ -43,7 +43,7 @@ export default function UserLocation({ gps, onViewportChange }: UserLocationProp
       <FitToLocation gps={gps} />
       <CircleMarker
         center={[position.lat, position.lon]}
-        radius={position.accuracy && position.accuracy < 200 ? Math.round(position.accuracy) : 8}
+        radius={8}
         pathOptions={{
           color: '#2563eb',
           fillColor: '#2563eb',

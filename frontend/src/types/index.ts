@@ -40,7 +40,6 @@ export interface Stats {
 export interface OptionsResponse {
   activities: string[];
   buildingConditions: string[];
-  gpsWarningDistanceMeters: number;
 }
 
 export interface ImportStats {
@@ -72,9 +71,7 @@ export interface SurveyPayload {
 }
 
 export interface GpsState {
-  position: { lat: number; lon: number; accuracy?: number } | null;
-  error: string | null;
-  errorKind: 'unavailable' | 'denied' | 'error' | null;
+  position: { lat: number; lon: number } | null;
   watching: boolean;
 }
 

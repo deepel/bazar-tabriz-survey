@@ -34,8 +34,7 @@ export default function SurveyMap() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [options, setOptions] = useState<OptionsResponse>({
     activities: FALLBACK_ACTIVITIES,
-    buildingConditions: FALLBACK_BUILDING_CONDITIONS,
-    gpsWarningDistanceMeters: 30
+    buildingConditions: FALLBACK_BUILDING_CONDITIONS
   });
   const [viewport, setViewport] = useState<Viewport | null>(null);
 
@@ -158,7 +157,6 @@ export default function SurveyMap() {
                   gps={gps}
                   activities={options.activities}
                   buildingConditions={options.buildingConditions}
-                  gpsWarningDistanceMeters={options.gpsWarningDistanceMeters}
                   onDismiss={() => setSelected(null)}
                   onSaved={handleSaved}
                 />

@@ -7,6 +7,7 @@ import {
   countSurveys,
   dbDescribe,
   featureCollection,
+  insertSimpleShop,
   loginCookie,
   resetDb,
   seedShopsBulk,
@@ -122,6 +123,41 @@ dbDescribe('GeoJSON import', () => {
     });
   });
 
+  describe('TEST G - duplicate fingerprints and ambiguous handles block the apply', () => {
+    it('flags an in-file duplicate fingerprint and refuses to apply', async () => {
+      const dup = utmSquareFeature(50);
+      const preview = await previewImport(
+        'dup.geojson',
+        JSON.stringify(featureCollection([dup, dup]))
+      );
+      expect(preview.stats.duplicateIds).toBe(1);
+      expect(preview.stats.invalidFeatures).toBe(1);
+      await expect(applyImport(preview.previewId)).rejects.toMatchObject({
+        code: 'invalid_feature'
+      });
+      expect(await countShops()).toBe(0);
+    });
+
+    it('flags an EntityHandle that maps to more than one shop and refuses to apply', async () => {
+      // TWO existing shops share the handle AMB but have different geometry.
+      await insertSimpleShop('shop_G1', 'AMB');
+      await insertSimpleShop('shop_G2', 'AMB');
+      const puzzled = utmSquareFeature(51, { handlePrefix: 'AMB_' });
+      (puzzled.properties as { EntityHandle: string }).EntityHandle = 'AMB';
+      const preview = await previewImport(
+        'ambiguous.geojson',
+        JSON.stringify(featureCollection([puzzled]))
+      );
+      expect(preview.stats.missingIds).toBe(1);
+      expect(preview.stats.invalidFeatures).toBe(1);
+      expect(preview.stats.newShops).toBe(0);
+      await expect(applyImport(preview.previewId)).rejects.toMatchObject({
+        code: 'invalid_feature'
+      });
+      expect(await countShops()).toBe(2);
+    });
+  });
+
   describe('TEST A - partial source grows to 2000 -> 2300 (1500 surveys preserved)', () => {
     it('adds 300 new shops without touching existing surveys', async () => {
       await seedShopsBulk(2000, 1500);
@@ -144,7 +180,7 @@ dbDescribe('GeoJSON import', () => {
   });
 
   describe('TEST B - geometry change keeps the shop identity and its survey', () => {
-    it('matches by EntityHandle within 15m and preserves survey data', async () => {
+    it('matches by a unique EntityHandle (no distance) and preserves survey data', async () => {
       const first = await previewImport(
         'base.geojson',
         JSON.stringify(featureCollection([utmSquareFeature(7)]))
@@ -166,7 +202,8 @@ dbDescribe('GeoJSON import', () => {
       });
       expect(saved.statusCode).toBe(201);
 
-      // Re-import the same handle shifted 6 m east (within the 15 m match window).
+      // Re-import the same unique handle with a shifted geometry. No distance is
+      // involved: a unique EntityHandle IS the same shop.
       const moved = await previewImport(
         'moved.geojson',
         JSON.stringify(featureCollection([utmSquareFeature(7, { dx: 6 })]))
@@ -223,7 +260,7 @@ dbDescribe('GeoJSON import', () => {
 
       // No shop created from the doomed batch (fingerprints of later features).
       const batch = analyzeGeoJsonContent(JSON.stringify(featureCollection(features)), 32638);
-      const ids = batch.map((f) => f.shopId);
+      const ids = batch.map((f) => f.fingerprint);
       const { pool } = await import('../db');
       const found = await pool.query('SELECT shop_id FROM shops WHERE geom_fingerprint = ANY($1)', [ids]);
       expect(found.rowCount).toBe(0);

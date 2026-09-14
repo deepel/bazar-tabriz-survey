@@ -1,7 +1,7 @@
 # Bazar Tabriz — Field Survey Management
 
 Mobile-first web application for surveying shops in the historic covered bazaar of Tabriz, Iran.
-It combines a live map, per-shop survey capture with GPS, an admin panel, and GeoJSON import/export in one simple app.
+It combines a live map, per-shop survey capture (GPS as optional metadata), an admin panel, and GeoJSON import/export in one simple app.
 
 **GIS source data:** AutoCAD-exported GeoJSON files from
 [deepel/bazar-tabriz-map-josn](https://github.com/deepel/bazar-tabriz-map-josn)
@@ -31,7 +31,8 @@ Frontend (React + Vite + Tailwind + Leaflet)   -- REST/JSON + cookie session -->
 1. Admin uploads a GeoJSON file (AutoCAD export, usually `EPSG:32638`).
 2. A preview computes the planned changes with **no database writes**.
 3. On confirmation, the whole import runs inside **one transaction**; any error rolls everything back.
-4. The surveyor picks a shop on the map and saves its data; the GPS fix is captured server-side.
+4. The surveyor picks a shop on the map and saves its data; the phone GPS fix (if available)
+   is stored as optional metadata (`survey_lat`/`survey_lon`).
 5. Data is stored in PostgreSQL and immediately visible to every other user.
 
 ---
@@ -42,19 +43,29 @@ A known problem was observed in the source files:
 
 - `EntityHandle` (the AutoCAD id) is unique *within* a file but **not stable across files** —
   e.g. handle `6E` points to one shop in one file and to a shop ~30 m away in another.
+- Therefore there is **no stable identifier in the source data**, and distance is not reliable
+  for matching either.
 
-Therefore **the stable shop id is a SHA-256 fingerprint of the final WGS84 geometry**, and
-`EntityHandle` is only used as a *secondary* matching fallback within
-`SHOP_MATCH_DISTANCE` (default 15 m):
+The stable shop id (`shop_id`) is an opaque UUID generated **once** when a shop is created and
+**never regenerated**. Matching is deterministic and uses **no distances**:
 
-- fingerprint matches an existing shop → `unchanged`
-- otherwise same `EntityHandle` with centroid distance ≤ 15 m → `geometry_update` (same shop, new geometry)
-- otherwise → `new` shop
+1. exact geometry fingerprint matches an existing shop → `unchanged`
+2. otherwise the feature's `EntityHandle` matches **exactly one** shop in the database →
+   `geometry_update` (same shop, new geometry, survey preserved)
+3. otherwise a **duplicate fingerprint inside the file** or an `EntityHandle` that matches
+   **more than one** shop is flagged as invalid and **blocks the apply**
+4. otherwise → `new` shop (a fresh UUID is assigned at apply time)
+
+Rules 1 and 3 are exact and side-effect-free. Rule 2 is the only heuristic: because the source
+data has no durable id, two unrelated files whose handles collide *without* an exact-geometry
+match could be joined as one shop — this limitation is accepted and documented.
 
 Guarantees:
 
 - **Partial import**: importing only 50 of 100 existing shops deletes nothing.
 - **Geometry updates never remove survey data**; a survey stays attached to its shop.
+- Imports are **non-destructive**: nothing is ever deleted, and an update only ever touches
+  geometry (never the surveyed fields).
 
 Implemented in `backend/src/services/geojson.service.ts` and `backend/src/services/import.service.ts`.
 
@@ -172,7 +183,7 @@ file size is capped; activity/condition lists are validated server-side.
 | GET | `/api/auth/me` | session | current user |
 | POST | `/api/auth/logout` | session | logout |
 | GET | `/api/stats` | any | totals / surveyed / progress |
-| GET | `/api/options` | any | activity & condition lists, GPS warning distance |
+| GET | `/api/options` | any | activity & condition lists |
 | GET | `/api/shops?bbMinLon=..&bbMinLat=..&bbMaxLon=..&bbMaxLat=..&limit=..` | any | shops inside a bbox |
 | POST | `/api/surveys` | any | create/update a survey (upsert) |
 | GET | `/api/surveys` | any | list surveys |
@@ -199,12 +210,14 @@ file size is capped; activity/condition lists are validated server-side.
 
 ---
 
-## GPS & distance
+## GPS (optional metadata)
 
-- The phone GPS is tracked with `watchPosition` (high accuracy); a blue dot is shown on the map.
-- The distance from the surveyor to the shop centroid is computed with Turf.
-- If the distance exceeds `GPS_WARNING_DISTANCE` (default 30 m) an orange warning is shown,
-  but saving is **never blocked**.
+- The phone GPS is tracked with `watchPosition`; a blue dot is shown on the map for orientation.
+- GPS is **never required, never validated and never blocks saving**. No distance to a shop is
+  ever computed.
+- When a survey is saved while a position is known, `survey_lat`/`survey_lon` are stored as
+  optional metadata; otherwise they are simply omitted.
+- GPS failures are silent; they have no effect on the survey workflow.
 
 ---
 
@@ -228,7 +241,7 @@ file size is capped; activity/condition lists are validated server-side.
   - TEST C — subset import deletes nothing.
   - TEST D — failed transaction rolls back completely.
   - plus auth, survey upsert, stats, export and GitHub behavior.
-- **Frontend (unit):** `distance` helpers (meters + Persian number formatting).
+- **Frontend (unit):** Persian number formatting helpers.
 
 ```bash
 npm test
@@ -267,6 +280,6 @@ bazar-tabriz-survey/
 │     ├─ components/      (MapView, ShopLayer, UserLocation, SurveyForm, ...)
 │     ├─ hooks/           (useAuth, useGeolocation)
 │     ├─ api/client.ts
-│     └─ utils/           (distance, format)
+│     └─ utils/           (format)
 └─ docker-compose.yml / .env.example / package.json
 ```

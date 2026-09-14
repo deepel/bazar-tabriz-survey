@@ -8,6 +8,7 @@ import {
   analyzeFeatures,
   analyzeGeoJsonContent,
   loadShopIndex,
+  makeShopId,
   type ImportAnalysis
 } from './geojson.service';
 
@@ -35,7 +36,7 @@ export async function previewImport(filename: string, content: string) {
     throw new AppError(400, 'invalid_geojson', (err as Error).message);
   }
   const existing = await loadShopIndex(pool);
-  const analysis = analyzeFeatures(features, existing, config.shopMatchDistanceMeters);
+  const analysis = analyzeFeatures(features, existing);
 
   const previewId = randomUUID();
   storedPreviews.set(previewId, { filename, content, createdAt: Date.now() });
@@ -73,7 +74,7 @@ export async function applyImport(previewId: string, options: ApplyOptions = {})
       // state can never drift apart. Every operation below shares a client.
       const features = analyzeGeoJsonContent(stored.content, config.sourceEpsg);
       const existing = await loadShopIndex(client);
-      const analysis = analyzeFeatures(features, existing, config.shopMatchDistanceMeters);
+      const analysis = analyzeFeatures(features, existing);
 
       if (analysis.stats.invalidFeatures > 0) {
         throw new AppError(
@@ -85,6 +86,7 @@ export async function applyImport(previewId: string, options: ApplyOptions = {})
 
       let insertedNew = 0;
       for (const item of analysis.features) {
+        let shopId: string;
         if (item.action === 'new') {
           insertedNew += 1;
           if (
@@ -93,8 +95,11 @@ export async function applyImport(previewId: string, options: ApplyOptions = {})
           ) {
             throw new Error('test-failure-injection');
           }
+          shopId = makeShopId();
+        } else {
+          shopId = item.targetShopId!;
         }
-        await upsertShop(client, item, stored.filename);
+        await upsertShop(client, item, shopId, stored.filename);
       }
 
       await client.query(
@@ -133,9 +138,10 @@ export async function applyImport(previewId: string, options: ApplyOptions = {})
 function upsertShop(
   client: PoolClient,
   item: ImportAnalysis['features'][number],
+  shopId: string,
   sourceFile: string
 ) {
-  const { geometryWgs84, centroid, bbox, properties, handle, targetShopId } = item;
+  const { geometryWgs84, centroid, bbox, properties, handle, fingerprint } = item;
   return client.query(
     `INSERT INTO shops
        (shop_id, geometry, geom_fingerprint, entity_handle, centroid_lat, centroid_lon,
@@ -155,9 +161,9 @@ function upsertShop(
        source_file = EXCLUDED.source_file,
        updated_at = now()`,
     [
-      targetShopId,
+      shopId,
       JSON.stringify(geometryWgs84),
-      item.shopId,
+      fingerprint,
       handle,
       centroid.lat,
       centroid.lon,

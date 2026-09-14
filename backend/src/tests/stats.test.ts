@@ -17,13 +17,13 @@ dbDescribe('stats', () => {
     });
   });
 
-  it('exposes option lists and the GPS warning distance', async () => {
+  it('exposes option lists without any GPS/distance settings', async () => {
     const { app, cookie } = await loginCookie('surveyor');
     const res = await app.inject({ method: 'GET', url: '/api/options', headers: { cookie } });
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.activities).toContain('پوشاک');
     expect(body.buildingConditions).toContain('سالم');
-    expect(body.gpsWarningDistanceMeters).toBe(30);
+    expect(body).not.toHaveProperty('gpsWarningDistanceMeters');
   });
 });

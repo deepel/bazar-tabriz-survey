@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { ACTIVITIES, BUILDING_CONDITIONS, config } from '../config';
+import { ACTIVITIES, BUILDING_CONDITIONS } from '../config';
 import { pool } from '../db';
 import { authenticate } from '../middleware/auth';
 
@@ -22,7 +22,6 @@ export function registerStatsAndOptions(app: FastifyInstance): void {
 
   app.get('/api/options', { preHandler: [authenticate] }, async () => ({
     activities: ACTIVITIES,
-    buildingConditions: BUILDING_CONDITIONS,
-    gpsWarningDistanceMeters: config.gpsWarningDistanceMeters
+    buildingConditions: BUILDING_CONDITIONS
   }));
 }

@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { OTHER } from '../config/constants';
-import { distanceToShop, formatDistance } from '../utils/distance';
 import type { GeoJsonFeature, GpsState } from '../types';
 
 interface SurveyFormProps {
@@ -9,7 +8,6 @@ interface SurveyFormProps {
   gps: GpsState;
   activities: string[];
   buildingConditions: string[];
-  gpsWarningDistanceMeters: number;
   onDismiss: () => void;
   onSaved: () => void;
 }
@@ -19,7 +17,6 @@ export default function SurveyForm({
   gps,
   activities,
   buildingConditions,
-  gpsWarningDistanceMeters,
   onDismiss,
   onSaved
 }: SurveyFormProps) {
@@ -45,18 +42,11 @@ export default function SurveyForm({
         setActivityOther(survey?.activity_other || '');
         setCondition(survey?.building_condition || '');
       } catch {
-        // Prefill is a convenience; the form stays usable offline of it.
+        // Prefill is a convenience; the form stays usable without it.
       }
     })();
   }, [props.shop_id]);
 
-  const distance = useMemo(() => {
-    if (!gps.position) return null;
-    return distanceToShop({ lat: gps.position.lat, lon: gps.position.lon }, feature);
-  }, [gps.position, feature]);
-
-  const showWarning =
-    distance !== null && gpsWarningDistanceMeters > 0 && distance > gpsWarningDistanceMeters;
   const showOther = activity === OTHER;
   const allowSave = !saving && activity.length > 0 && condition.length > 0 && (!showOther || activityOther.trim().length > 0);
 
@@ -71,6 +61,8 @@ export default function SurveyForm({
         activity,
         activity_other: showOther ? activityOther.trim() : undefined,
         building_condition: condition,
+        // GPS is optional metadata only: it records where the surveyor happened
+        // to be, never blocks or validates the save.
         survey_lat: gps.position?.lat ?? null,
         survey_lon: gps.position?.lon ?? null
       });
@@ -102,30 +94,6 @@ export default function SurveyForm({
           بستن
         </button>
       </div>
-
-      {gps.error && (
-        <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-800">
-          {gps.error}
-        </div>
-      )}
-      {!gps.error && distance === null && (
-        <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-800">
-          موقعیت GPS شما در دسترس نیست؛ در صورت امکان مختصات ذخیره نمی‌شود.
-        </div>
-      )}
-      {distance !== null && (
-        <div
-          className={`mb-3 rounded-lg border p-2.5 text-xs ${
-            showWarning
-              ? 'border-orange-400 bg-orange-50 text-orange-800'
-              : 'border-slate-200 bg-slate-50 text-slate-600'
-          }`}
-        >
-          {showWarning
-            ? `هشدار: فاصله شما از این مغازه ${Math.round(distance)} متر است.`
-            : `فاصله شما از این مغازه: ${formatDistance(distance)}`}
-        </div>
-      )}
 
       <div className="space-y-3">
         <div>

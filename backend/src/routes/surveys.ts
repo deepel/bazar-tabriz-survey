@@ -51,12 +51,6 @@ export function registerSurveyRoutes(app: FastifyInstance): void {
       }
       const lat = body.survey_lat;
       const lon = body.survey_lon;
-      if (lat !== undefined && (lat < -90 || lat > 90)) {
-        throw new AppError(400, 'invalid_gps', 'مختصات GPS معتبر نیست.');
-      }
-      if (lon !== undefined && (lon < -180 || lon > 180)) {
-        throw new AppError(400, 'invalid_gps', 'مختصات GPS معتبر نیست.');
-      }
 
       const { survey, created } = await saveSurvey(request.user!.id, {
         shop_id: body.shop_id,

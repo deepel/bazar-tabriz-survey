@@ -1,7 +1,6 @@
 import { createHash } from 'crypto';
 import proj4 from 'proj4';
 import turfCenterOfMass from '@turf/center-of-mass';
-import turfDistance from '@turf/distance';
 
 // Well known UTM zones covering Iran.
 const PROJ_DEFS: Record<number, string> = {
@@ -123,13 +122,6 @@ export function geometryBBox(geometry: GeometryLike): BBox {
   };
   visit(geometry.coordinates);
   return { minLon, minLat, maxLon, maxLat };
-}
-
-/** Spherical distance between two points in meters (Turf). */
-export function distanceMeters(a: LatLng, b: LatLng): number {
-  const from = { type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [a.lon, a.lat] } };
-  const to = { type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [b.lon, b.lat] } };
-  return turfDistance(from as never, to as never, { units: 'meters' });
 }
 
 /** Acceptable GeoJSON geometry types for shops. */

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   crsEpsgFromGeoJson,
-  distanceMeters,
   geometryBBox,
   geometryCentroid,
   geometryFingerprint,
@@ -67,13 +66,6 @@ describe('geo utils', () => {
   it('computes the bbox correctly', () => {
     const b = geometryBBox(square);
     expect(b).toEqual({ minLon: 46.29, minLat: 38.07, maxLon: 46.290005, maxLat: 38.070005 });
-  });
-
-  it('measures distances in meters', () => {
-    expect(distanceMeters({ lat: 38.08, lon: 46.29 }, { lat: 38.08, lon: 46.29 })).toBeLessThan(0.001);
-    const d = distanceMeters({ lat: 38, lon: 46 }, { lat: 39, lon: 46 });
-    expect(d).toBeGreaterThan(110_000);
-    expect(d).toBeLessThan(112_000);
   });
 
   it('only accepts Polygon/MultiPolygon geometries', () => {

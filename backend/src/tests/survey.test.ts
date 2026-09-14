@@ -99,17 +99,37 @@ dbDescribe('survey submission', () => {
     expect(res.statusCode).toBe(400);
   });
 
-  it('rejects invalid GPS coordinates', async () => {
+  it('TEST E - saves a survey with no GPS at all (GPS never required)', async () => {
     await insertSimpleShop('shop_E');
     const { app, cookie } = await loginCookie('surveyor');
     const res = await app.inject({
       method: 'POST',
       url: '/api/surveys',
       headers: { cookie },
-      payload: { shop_id: 'shop_E', activity: 'پوشاک', building_condition: 'سالم', survey_lat: 99 }
+      payload: { shop_id: 'shop_E', shop_name: 'بدون جی‌پی‌اس', activity: 'پوشاک', building_condition: 'سالم' }
     });
-    expect(res.statusCode).toBe(400);
-    expect(res.json().error).toBe('invalid_gps');
+    expect(res.statusCode).toBe(201);
+    expect(res.json().survey.survey_lat).toBeNull();
+    expect(res.json().survey.survey_lon).toBeNull();
+  });
+
+  it('TEST F - out-of-range GPS values are stored as optional metadata, not rejected', async () => {
+    await insertSimpleShop('shop_F');
+    const { app, cookie } = await loginCookie('surveyor');
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/surveys',
+      headers: { cookie },
+      payload: {
+        shop_id: 'shop_F',
+        activity: 'پوشاک',
+        building_condition: 'سالم',
+        survey_lat: 99,
+        survey_lon: -999
+      }
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().survey.survey_lat).toBe(99);
   });
 
   it('requires authentication', async () => {

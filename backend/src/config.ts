@@ -26,8 +26,6 @@ export const config = {
     .map((s) => s.trim()),
 
   maxGeoJsonSize: intEnv('MAX_GEOJSON_SIZE', 50_000_000),
-  shopMatchDistanceMeters: intEnv('SHOP_MATCH_DISTANCE', 15),
-  gpsWarningDistanceMeters: intEnv('GPS_WARNING_DISTANCE', 30),
   // Default EPSG for the source AutoCAD-exported GeoJSON files.
   sourceEpsg: intEnv('SOURCE_EPSG', 32638),
 

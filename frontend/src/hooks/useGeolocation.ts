@@ -4,12 +4,13 @@ import type { GpsState } from '../types';
 /**
  * Thin wrapper over the browser Geolocation API. Keeps watching the position
  * so the blue dot moves while the surveyor walks through the bazaar.
+ *
+ * GPS is optional metadata only: failures are silent and never block or
+ * warn the surveyor. There is no distance validation against shops.
  */
 export function useGeolocation(active: boolean): GpsState & { locate: () => void } {
   const [state, setState] = useState<GpsState>({
     position: null,
-    error: null,
-    errorKind: null,
     watching: false
   });
   const watchId = useRef<number | null>(null);
@@ -22,36 +23,24 @@ export function useGeolocation(active: boolean): GpsState & { locate: () => void
   }, []);
 
   const start = useCallback(() => {
-    if (!('geolocation' in navigator)) {
-      setState((s) => ({
-        ...s,
-        error: 'موقعیت‌یابی در این مرورگر پشتیبانی نمی‌شود.',
-        errorKind: 'unavailable',
-        watching: false
-      }));
+    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+      setState((s) => ({ ...s, watching: false }));
       return;
     }
-    setState((s) => ({ ...s, watching: true, error: null, errorKind: null }));
+    setState((s) => ({ ...s, watching: true }));
     watchId.current = navigator.geolocation.watchPosition(
       (position) => {
         setState((s) => ({
           ...s,
           position: {
             lat: position.coords.latitude,
-            lon: position.coords.longitude,
-            accuracy: position.coords.accuracy
+            lon: position.coords.longitude
           },
-          error: null,
-          errorKind: null
+          watching: true
         }));
       },
-      (err) => {
-        const errorKind = err.code === err.PERMISSION_DENIED ? 'denied' : 'unavailable';
-        const message =
-          errorKind === 'denied'
-            ? 'دسترسی به موقعیت مکانی مجاز نیست. لطفاً در مرورگر، موقعیت را فعال کنید.'
-            : 'موقعیت مکانی در دسترس نیست. در صورت نیاز، GPS دستگاه خود را روشن کنید.';
-        setState((s) => ({ ...s, error: message, errorKind }));
+      () => {
+        setState((s) => ({ ...s, watching: false }));
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 2000 }
     );

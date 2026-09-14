@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import type { Pool, PoolClient } from 'pg';
 import {
   crsEpsgFromGeoJson,
@@ -13,7 +14,7 @@ import {
 
 export interface ImportFeature {
   index: number;
-  shopId: string; // fingerprint of current geometry (immutable for new shops)
+  fingerprint: string; // SHA-256 of the WGS84 geometry; used ONLY for exact matching/dup detection
   handle: string | null;
   properties: Record<string, unknown>;
   geometry: GeometryLike; // already converted to WGS84
@@ -39,9 +40,11 @@ export interface ImportAnalysis {
   stats: ImportStats;
   features: Array<{
     index: number;
-    shopId: string;
+    fingerprint: string;
     action: 'unchanged' | 'geometry_update' | 'new';
-    targetShopId: string;
+    // For 'unchanged'/'geometry_update': the existing shop_id this feature maps to.
+    // For 'new': null — a fresh shop_id is generated at apply time.
+    targetShopId: string | null;
     handle: string | null;
     properties: Record<string, unknown>;
     geometryWgs84: GeometryLike;
@@ -61,8 +64,6 @@ interface ExistingShop {
   shop_id: string;
   geom_fingerprint: string;
   entity_handle: string | null;
-  centroid_lat: number;
-  centroid_lon: number;
 }
 
 /**
@@ -89,7 +90,7 @@ export function analyzeGeoJsonContent(content: string, sourceEpsg: number): Impo
     const errors: string[] = [];
     const base: ImportFeature = {
       index,
-      shopId: '',
+      fingerprint: '',
       handle: null,
       properties: {},
       geometry: { type: 'Polygon', coordinates: [] },
@@ -119,7 +120,7 @@ export function analyzeGeoJsonContent(content: string, sourceEpsg: number): Impo
     }
     const props = ((raw as { properties?: unknown }).properties || {}) as Record<string, unknown>;
     const handle = typeof props.EntityHandle === 'string' && props.EntityHandle ? props.EntityHandle : null;
-    base.shopId = geometryFingerprint(wgs84);
+    base.fingerprint = geometryFingerprint(wgs84);
     base.handle = handle;
     base.properties = props;
     base.geometry = wgs84;
@@ -140,11 +141,30 @@ function safeJsonParse(text: string): unknown {
   }
 }
 
-/** Builds the set of counters shown in the import preview (no DB writes). */
+function newShopId(): string {
+  return randomUUID();
+}
+
+/** Export for the apply step: identity of genuinely new shops. */
+export function makeShopId(): string {
+  return newShopId();
+}
+
+/**
+ * Builds the set of counters shown in the import preview (no DB writes).
+ *
+ * Identity rule (see README "Identity and non-destructive merge"):
+ *  - Shop identity is an opaque, immutable id assigned ONCE at first import.
+ *    Geometry fingerprints are ONLY used for exact matching, never as identity.
+ *  - Match order (deterministic, no distance, no index/order, no random):
+ *    1. exact geometry fingerprint          -> unchanged
+ *    2. unique EntityHandle across the DB   -> geometry_update (same shop, new geometry)
+ *    3. ambiguous handle (>=2 shops) or in-file duplicate -> flagged, blocks apply
+ *    4. otherwise                           -> new shop
+ */
 export function analyzeFeatures(
   features: ImportFeature[],
-  existing: Map<string, ExistingShop>,
-  matchDistanceMeters: number
+  existing: Map<string, ExistingShop>
 ): ImportAnalysis {
   const stats: ImportStats = {
     totalFeatures: features.length,
@@ -181,23 +201,23 @@ export function analyzeFeatures(
       stats.errors.push({ index: feature.index, message: feature.errors.join(' ') });
       continue;
     }
-    if (seenFingerprints.has(feature.shopId)) {
+    if (seenFingerprints.has(feature.fingerprint)) {
       stats.duplicateIds += 1;
       stats.invalidFeatures += 1;
       stats.errors.push({
         index: feature.index,
-        message: 'ویژگی تکراری در فایل: شناسه (هندسه) یکسان با یکی از ویژگی‌های قبلی است.'
+        message: 'ویژگی تکراری در فایل: دو ویژگی با هندسهٔ یکسان (شناسهٔ تکراری) یافت شد.'
       });
       continue;
     }
-    seenFingerprints.add(feature.shopId);
+    seenFingerprints.add(feature.fingerprint);
 
-    const exact = byFingerprint.get(feature.shopId);
+    const exact = byFingerprint.get(feature.fingerprint);
     if (exact) {
       stats.existingShops += 1;
       assigned.push({
         index: feature.index,
-        shopId: feature.shopId,
+        fingerprint: feature.fingerprint,
         action: 'unchanged',
         targetShopId: exact.shop_id,
         handle: feature.handle,
@@ -209,48 +229,44 @@ export function analyzeFeatures(
       continue;
     }
 
-    // No exact fingerprint match: the same AutoCAD handle located within
-    // `matchDistanceMeters` is treated as the same shop with updated geometry.
-    let updatedTarget: ExistingShop | null = null;
+    // No exact match. A unique EntityHandle identifies the same real-world shop
+    // across successive exports of the same CAD project. If the handle is
+    // ambiguous (already used by more than one shop) we refuse to guess.
     if (feature.handle) {
       const candidates = byHandle.get(feature.handle);
-      if (candidates && candidates.length) {
-        let bestDist = Infinity;
-        let best: ExistingShop | null = null;
-        for (const cand of candidates) {
-          const d = haversine(feature.centroid, { lat: cand.centroid_lat, lon: cand.centroid_lon });
-          if (d < bestDist) {
-            bestDist = d;
-            best = cand;
-          }
-        }
-        if (best && bestDist <= matchDistanceMeters) updatedTarget = best;
+      if (candidates && candidates.length === 1) {
+        stats.existingShops += 1;
+        stats.geometryChanges += 1;
+        assigned.push({
+          index: feature.index,
+          fingerprint: feature.fingerprint,
+          action: 'geometry_update',
+          targetShopId: candidates[0].shop_id,
+          handle: feature.handle,
+          properties: feature.properties,
+          geometryWgs84: feature.geometry,
+          centroid: feature.centroid,
+          bbox: feature.bbox
+        });
+        continue;
       }
-    }
-
-    if (updatedTarget) {
-      stats.existingShops += 1;
-      stats.geometryChanges += 1;
-      assigned.push({
-        index: feature.index,
-        shopId: feature.shopId,
-        action: 'geometry_update',
-        targetShopId: updatedTarget.shop_id,
-        handle: feature.handle,
-        properties: feature.properties,
-        geometryWgs84: feature.geometry,
-        centroid: feature.centroid,
-        bbox: feature.bbox
-      });
-      continue;
+      if (candidates && candidates.length > 1) {
+        stats.missingIds += 1;
+        stats.invalidFeatures += 1;
+        stats.errors.push({
+          index: feature.index,
+          message: `شناسهٔ (EntityHandle) «${feature.handle}» در دیتابیس مبهم است و متعلق به بیش از یک مغازه موجود می‌باشد.`
+        });
+        continue;
+      }
     }
 
     stats.newShops += 1;
     assigned.push({
       index: feature.index,
-      shopId: feature.shopId,
+      fingerprint: feature.fingerprint,
       action: 'new',
-      targetShopId: feature.shopId,
+      targetShopId: null,
       handle: feature.handle,
       properties: feature.properties,
       geometryWgs84: feature.geometry,
@@ -264,20 +280,9 @@ export function analyzeFeatures(
 
 export async function loadShopIndex(client: Pool | PoolClient): Promise<Map<string, ExistingShop>> {
   const result = await client.query<ExistingShop>(
-    'SELECT shop_id, geom_fingerprint, entity_handle, centroid_lat, centroid_lon FROM shops'
+    'SELECT shop_id, geom_fingerprint, entity_handle FROM shops'
   );
   const map = new Map<string, ExistingShop>();
   for (const row of result.rows) map.set(row.shop_id, row);
   return map;
-}
-
-function haversine(a: LatLng, b: LatLng): number {
-  const R = 6371000;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(b.lat - a.lat);
-  const dLon = toRad(b.lon - a.lon);
-  const s =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(s));
 }
