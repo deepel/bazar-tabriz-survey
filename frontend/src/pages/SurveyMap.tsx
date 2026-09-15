@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { api, isUnauthorized } from '../api/client';
 import Header from '../components/Header';
+import LayerControl from '../components/LayerControl';
 import LoadingState from '../components/LoadingState';
 import MapView from '../components/MapView';
 import SurveyForm from '../components/SurveyForm';
@@ -12,7 +13,8 @@ import {
 } from '../config/constants';
 import { useAuth } from '../hooks/useAuth';
 import { useGeolocation } from '../hooks/useGeolocation';
-import type { GeoJsonFeature, MessagesResponse, OptionsResponse, ShopsResponse, Stats } from '../types';
+import { useGisLayers } from '../hooks/useGisLayers';
+import type { GeoJsonFeature, GisLayer, MessagesResponse, OptionsResponse, ShopsResponse, Stats } from '../types';
 import { formatNumber } from '../utils/format';
 
 interface Viewport {
@@ -38,6 +40,20 @@ export default function SurveyMap() {
   });
   const [viewport, setViewport] = useState<Viewport | null>(null);
   const [unread, setUnread] = useState(0);
+
+  const { layers: gisLayerConfig } = useGisLayers();
+  const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!gisLayerConfig || gisLayerConfig.length === 0) return;
+    setLayerVisibility((prev) => {
+      const next = { ...prev };
+      for (const layer of gisLayerConfig) {
+        if (next[layer.layer_key] === undefined) next[layer.layer_key] = true;
+      }
+      return next;
+    });
+  }, [gisLayerConfig]);
 
   useEffect(() => {
     api
@@ -113,6 +129,17 @@ export default function SurveyMap() {
     return `${formatNumber(stats.surveyed)} از ${formatNumber(stats.total)}`;
   }, [stats]);
 
+  const mapLayers = useMemo((): GisLayer[] => {
+    return (gisLayerConfig ?? [])
+      .filter((layer) => layer.enabled && layerVisibility[layer.layer_key] !== false)
+      .sort((a, b) => a.order_index - b.order_index);
+  }, [gisLayerConfig, layerVisibility]);
+
+  const controlLayers = useMemo(
+    () => (gisLayerConfig ?? []).filter((layer) => layer.enabled),
+    [gisLayerConfig]
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen">
@@ -168,7 +195,15 @@ export default function SurveyMap() {
           selectedShopId={selected?.properties.shop_id ?? null}
           onShopSelected={setSelected}
           onViewportChange={onViewportChange}
+          layers={mapLayers}
         >
+          <LayerControl
+            layers={controlLayers}
+            visibility={layerVisibility}
+            onToggle={(layerKey, visible) =>
+              setLayerVisibility((prev) => ({ ...prev, [layerKey]: visible }))
+            }
+          />
           {selected && (
             <div className="absolute inset-x-0 bottom-0 z-[1000] p-3">
               <div className="mx-auto w-full max-w-lg">

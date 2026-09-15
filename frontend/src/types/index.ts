@@ -172,3 +172,17 @@ export interface AdminShopsFilters {
   date_from: string;
   date_to: string;
 }
+
+export interface GisLayer {
+  layer_key: string;
+  display_name: string;
+  enabled: boolean;
+  source_url: string;
+  order_index: number;
+  cache_version: number;
+  updated_at: string;
+}
+
+export interface GisLayersResponse {
+  layers: GisLayer[];
+}

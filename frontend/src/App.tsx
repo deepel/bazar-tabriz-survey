@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import LoadingState from './components/LoadingState';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminLayers from './pages/AdminLayers';
 import AdminShops from './pages/AdminShops';
 import ImportGeoJSON from './pages/ImportGeoJSON';
 import Login from './pages/Login';
@@ -72,6 +73,14 @@ export default function App() {
             element={
               <AuthGuard admin>
                 <AdminShops />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/admin/layers"
+            element={
+              <AuthGuard admin>
+                <AdminLayers />
               </AuthGuard>
             }
           />

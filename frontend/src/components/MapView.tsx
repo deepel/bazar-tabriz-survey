@@ -1,8 +1,15 @@
 import { MapContainer, TileLayer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { ReactNode } from 'react';
-import type { GeoJsonFeature, GpsState, ShopsResponse } from '../types';
-import { MAP, TABRIZ_CENTER } from '../config/constants';
+import type { GeoJsonFeature, GisLayer, GpsState, ShopsResponse } from '../types';
+import {
+  MAP,
+  MAP_BOUNDS,
+  TABRIZ_CENTER,
+  TILE_MAX_NATIVE_ZOOM,
+  TILE_URL
+} from '../config/constants';
+import GisReferenceLayers from './GisReferenceLayers';
 import ShopLayer from './ShopLayer';
 import UserLocation from './UserLocation';
 
@@ -12,6 +19,7 @@ interface MapViewProps {
   selectedShopId: string | null;
   onShopSelected: (feature: GeoJsonFeature) => void;
   onViewportChange: (bounds: { minLon: number; minLat: number; maxLon: number; maxLat: number }) => void;
+  layers: GisLayer[];
   children?: ReactNode;
 }
 
@@ -21,6 +29,7 @@ export default function MapView({
   selectedShopId,
   onShopSelected,
   onViewportChange,
+  layers,
   children
 }: MapViewProps) {
   return (
@@ -30,13 +39,21 @@ export default function MapView({
         zoom={MAP.initialZoom}
         minZoom={MAP.minZoom}
         maxZoom={MAP.maxZoom}
+        maxBounds={MAP_BOUNDS}
         zoomControl={true}
         className="z-0"
       >
+        {/* OSM tiles only exist up to z=TILE_MAX_NATIVE_ZOOM; maxNativeZoom
+            makes Leaflet upscale the top tiles instead of requesting the
+            missing z≥20 tiles, so the base map never goes blank when zoomed
+            in far enough to inspect individual shops. */}
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          url={TILE_URL}
+          maxZoom={MAP.maxZoom}
+          maxNativeZoom={TILE_MAX_NATIVE_ZOOM}
         />
+        <GisReferenceLayers layers={layers} />
         <ShopLayer shops={shops} selectedShopId={selectedShopId} onShopSelected={onShopSelected} />
         <UserLocation gps={gps} onViewportChange={onViewportChange} />
       </MapContainer>

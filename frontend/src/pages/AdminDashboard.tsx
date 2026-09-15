@@ -180,6 +180,9 @@ export default function AdminDashboard() {
               <Link to="/admin/shops" className="btn-primary text-center">
                 اطلاعات مغازه‌ها
               </Link>
+              <Link to="/admin/layers" className="btn-ghost text-center">
+                لایه‌های نقشه
+              </Link>
               <Link to="/admin/import" className="btn-ghost text-center">
                 ورود GeoJSON
               </Link>
