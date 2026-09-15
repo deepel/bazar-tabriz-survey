@@ -105,12 +105,25 @@ export async function insertSurveyFor(
   shopId: string,
   activity: string,
   surveyorUsername: string,
-  activityOther: string | null = null
+  activityOther: string | null = null,
+  options: {
+    surveyedAt?: Date;
+    buildingCondition?: string;
+    shopName?: string;
+  } = {}
 ): Promise<void> {
   await pool.query(
-    `INSERT INTO surveys (shop_id, shop_name, activity, activity_other, building_condition, surveyor_id)
-     VALUES ($1, 'مغازه ' || $1, $2, $3, 'سالم', (SELECT id FROM users WHERE username = $4))`,
-    [shopId, activity, activityOther, surveyorUsername]
+    `INSERT INTO surveys (shop_id, shop_name, activity, activity_other, building_condition, surveyor_id, surveyed_at)
+     VALUES ($1, $2, $3, $4, $5, (SELECT id FROM users WHERE username = $6), $7)`,
+    [
+      shopId,
+      options.shopName ?? 'مغازه ' + shopId,
+      activity,
+      activityOther,
+      options.buildingCondition ?? 'سالم',
+      surveyorUsername,
+      options.surveyedAt ?? new Date()
+    ]
   );
 }
 

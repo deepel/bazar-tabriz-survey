@@ -6,6 +6,7 @@ import { logger } from './logger';
 import { pingDatabase } from './db';
 import { registerAdminGeoJsonRoutes } from './routes/admin/geojson';
 import { registerAdminGitHubRoutes } from './routes/admin/github';
+import { registerAdminShopRoutes } from './routes/admin/shops';
 import { registerAdminStatsRoutes } from './routes/admin/stats';
 import { registerAdminUserRoutes } from './routes/admin/users';
 import { registerAuthRoutes } from './routes/auth';
@@ -64,6 +65,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   registerSurveyRoutes(app);
   registerAdminUserRoutes(app);
   registerAdminStatsRoutes(app);
+  registerAdminShopRoutes(app);
   registerAdminGeoJsonRoutes(app);
   registerAdminGitHubRoutes(app);
   registerMessageRoutes(app);

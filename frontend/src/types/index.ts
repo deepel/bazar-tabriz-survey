@@ -122,3 +122,53 @@ export interface MessagesResponse {
   messages: AppMessage[];
   unread: number;
 }
+
+export type AdminShopsSortKey =
+  | 'shop_name'
+  | 'activity'
+  | 'activity_other'
+  | 'building_condition'
+  | 'surveyed'
+  | 'surveyor'
+  | 'surveyed_at'
+  | 'shop_id';
+
+export type AdminShopsSortDirection = 'asc' | 'desc';
+
+export interface AdminShopRow {
+  shop_id: string;
+  shop_name: string | null;
+  activity: string | null;
+  activity_other: string | null;
+  building_condition: string | null;
+  surveyed: boolean;
+  surveyed_at: string | null;
+  surveyor_username: string | null;
+}
+
+export interface AdminShopsSummary {
+  total: number;
+  surveyed: number;
+  unsurveyed: number;
+}
+
+export interface AdminShopsResponse {
+  summary: AdminShopsSummary;
+  rows: AdminShopRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  sort: AdminShopsSortKey;
+  order: AdminShopsSortDirection;
+}
+
+export interface AdminShopsFilters {
+  shop_name: string;
+  activity: string;
+  activity_other: string;
+  building_condition: string;
+  surveyed: '' | 'yes' | 'no';
+  surveyor: string;
+  date_from: string;
+  date_to: string;
+}

@@ -177,7 +177,10 @@ export default function AdminDashboard() {
           <section className="card space-y-3">
             <h2 className="text-sm font-bold">ابزارها</h2>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <Link to="/admin/import" className="btn-primary text-center">
+              <Link to="/admin/shops" className="btn-primary text-center">
+                اطلاعات مغازه‌ها
+              </Link>
+              <Link to="/admin/import" className="btn-ghost text-center">
                 ورود GeoJSON
               </Link>
               <button className="btn-ghost" onClick={handleExport} disabled={busy}>
