@@ -87,6 +87,21 @@ async function provision(): Promise<void> {
     ]);
   }
 
+  // Users are seeded after migrations in the isolated test database.
+  await pool.query(`
+    WITH ranked AS (
+      SELECT id, row_number() OVER (ORDER BY id) AS position
+      FROM users
+    )
+    UPDATE users AS u
+    SET assignment_color = (ARRAY[
+      '#2563eb', '#7c3aed', '#0891b2', '#d97706',
+      '#db2777', '#4f46e5', '#0f766e', '#64748b'
+    ])[(ranked.position - 1) % 8 + 1]
+    FROM ranked
+    WHERE ranked.id = u.id
+  `);
+
   await pool.query('TRUNCATE shops, surveys, app_meta RESTART IDENTITY CASCADE');
   await pool.end().catch(() => undefined);
 

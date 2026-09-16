@@ -11,6 +11,7 @@ import { registerGisLayerRoutes } from './routes/gis-layers';
 import { registerAdminShopRoutes } from './routes/admin/shops';
 import { registerAdminStatsRoutes } from './routes/admin/stats';
 import { registerAdminSystemLogRoutes } from './routes/admin/system-logs';
+import { registerAssignmentRoutes } from './routes/assignments';
 import { registerAdminUserRoutes } from './routes/admin/users';
 import { registerAuthRoutes } from './routes/auth';
 import { registerMessageRoutes } from './routes/messages';
@@ -77,6 +78,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   registerAdminUserRoutes(app);
   registerAdminStatsRoutes(app);
   registerAdminSystemLogRoutes(app);
+  registerAssignmentRoutes(app);
   registerAdminShopRoutes(app);
   registerAdminGeoJsonRoutes(app);
   registerAdminGitHubRoutes(app);

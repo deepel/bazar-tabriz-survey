@@ -2,6 +2,7 @@ import { pool } from '../db';
 import { logger } from '../logger';
 import { AppError } from '../utils/errors';
 import { maybeAutoSync } from './github.service';
+import { completeAssignmentsForShop } from './assignment.service';
 
 export interface SurveyInput {
   shop_id: string;
@@ -62,6 +63,16 @@ export async function saveSurvey(surveyorId: number, input: SurveyInput) {
     surveyorId,
     surveyedAt: survey.surveyed_at
   });
+  // Assignment completion is bookkeeping and must never make an otherwise
+  // valid, GPS-independent survey save fail.
+  try {
+    await completeAssignmentsForShop(input.shop_id);
+  } catch (err) {
+    logger.error('assignment.completion.failed', {
+      shopId: input.shop_id,
+      message: (err as Error).message
+    });
+  }
 
   // GitHub backup is async and must never break the survey write.
   maybeAutoSync().catch((err) => {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError, downloadGeojson } from '../api/client';
 import CategoryStats from '../components/CategoryStats';
+import AdminAssignmentsPanel from '../components/AdminAssignmentsPanel';
 import ErrorMessage from '../components/ErrorMessage';
 import Header from '../components/Header';
 import LoadingState from '../components/LoadingState';
@@ -10,6 +11,7 @@ import StatsCards from '../components/StatsCards';
 import SystemLogPanel from '../components/SystemLogPanel';
 import SurveyorLeaderboard from '../components/SurveyorLeaderboard';
 import { useAuth } from '../hooks/useAuth';
+import { ASSIGNMENT_COLOR_OPTIONS } from '../config/constants';
 import type {
   CategoryStatsResponse,
   GithubStatus,
@@ -119,6 +121,19 @@ export default function AdminDashboard() {
     }
   }
 
+  async function updateAssignmentColor(user: User, color: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.patch(`/api/admin/users/${user.id}`, { assignment_color: color });
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'رنگ assignment به‌روزرسانی نشد.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (!stats) {
     return (
       <div className="min-h-screen">
@@ -151,6 +166,8 @@ export default function AdminDashboard() {
         <StatsCards stats={stats} />
 
         <SystemLogPanel />
+
+        <AdminAssignmentsPanel />
 
         <div className="grid gap-4 lg:grid-cols-2">
           <section className="card space-y-3">
@@ -223,6 +240,7 @@ export default function AdminDashboard() {
                   <tr className="border-b text-xs text-slate-400">
                     <th className="pb-2 font-medium">نام کاربری</th>
                     <th className="pb-2 font-medium">نقش</th>
+                    <th className="pb-2 font-medium">رنگ محدوده</th>
                     <th className="pb-2 font-medium">وضعیت</th>
                     <th className="pb-2 font-medium">اقدام</th>
                   </tr>
@@ -232,6 +250,22 @@ export default function AdminDashboard() {
                     <tr key={user.id} className="border-b border-slate-100 last:border-0">
                       <td className="py-2">{user.username}</td>
                       <td className="py-2">{user.role === 'admin' ? 'مدیر' : 'ممیز'}</td>
+                      <td className="py-2">
+                        {user.role === 'surveyor' ? (
+                          <label className="flex items-center gap-1">
+                            <span className="h-3 w-3 rounded-full" style={{ backgroundColor: user.assignment_color ?? ASSIGNMENT_COLOR_OPTIONS[0] }} />
+                            <select
+                              className="max-w-28 rounded border border-slate-200 bg-white px-1 py-1 text-xs"
+                              value={user.assignment_color ?? ASSIGNMENT_COLOR_OPTIONS[0]}
+                              onChange={(event) => void updateAssignmentColor(user, event.target.value)}
+                              disabled={busy}
+                              aria-label={`رنگ assignment ${user.username}`}
+                            >
+                              {ASSIGNMENT_COLOR_OPTIONS.map((color) => <option key={color} value={color}>{color}</option>)}
+                            </select>
+                          </label>
+                        ) : '—'}
+                      </td>
                       <td className="py-2">{user.is_active ? 'فعال' : 'غیرفعال'}</td>
                       <td className="py-2">
                         <button
@@ -246,7 +280,7 @@ export default function AdminDashboard() {
                   ))}
                   {users.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="py-3 text-center text-xs text-slate-400">
+                      <td colSpan={5} className="py-3 text-center text-xs text-slate-400">
                         کاربری وجود ندارد.
                       </td>
                     </tr>

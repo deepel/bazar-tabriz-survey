@@ -23,7 +23,7 @@ export default function LayerControl({
   baseMap = 'osm',
   onBaseMapChange
 }: LayerControlProps) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
   const confirmTimer = useRef<number | undefined>(undefined);
 

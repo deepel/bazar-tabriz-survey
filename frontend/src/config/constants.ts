@@ -24,6 +24,11 @@ export const FALLBACK_BUILDING_CONDITIONS = [
 
 export const OTHER = 'سایر';
 
+export const ASSIGNMENT_COLOR_OPTIONS = [
+  '#2563eb', '#7c3aed', '#0891b2', '#d97706',
+  '#db2777', '#4f46e5', '#0f766e', '#64748b'
+] as const;
+
 export const TABRIZ_CENTER: [number, number] = [38.0739, 46.2914];
 
 export const MAP = {

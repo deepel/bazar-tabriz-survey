@@ -68,7 +68,7 @@ export function registerAuthRoutes(app: FastifyInstance): void {
     { preHandler: [authenticate] },
     async (request) => {
       const result = await pool.query(
-        'SELECT id, username, role, is_active, created_at FROM users WHERE id = $1',
+        'SELECT id, username, role, is_active, assignment_color, created_at FROM users WHERE id = $1',
         [request.user!.id]
       );
       if (!result.rowCount) {

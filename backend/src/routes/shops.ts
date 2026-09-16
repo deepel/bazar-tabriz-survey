@@ -27,23 +27,39 @@ export function registerShopRoutes(app: FastifyInstance): void {
         const [minLon, minLat, maxLon, maxLat] = parts;
         result = await pool.query(
           `SELECT s.shop_id, s.geometry, s.centroid_lat, s.centroid_lon,
-                  sv.shop_name, sv.activity, sv.building_condition
+                  sv.shop_name, sv.activity, sv.building_condition,
+                  a.id AS assignment_id,
+                  CASE WHEN a.id IS NULL THEN NULL ELSE COALESCE(am.color_snapshot, a.primary_color) END AS assignment_color
            FROM shops s
            LEFT JOIN surveys sv ON sv.shop_id = s.shop_id
-           WHERE s.min_lon >= $1 AND s.max_lon <= $2 AND s.min_lat >= $3 AND s.max_lat <= $4
+           LEFT JOIN assignment_shops ash ON ash.shop_id = s.shop_id
+           LEFT JOIN assignment_members am ON am.assignment_id = ash.assignment_id AND am.user_id = ash.member_id
+           LEFT JOIN assignments a ON a.id = ash.assignment_id AND a.status = 'active'
+             AND ($1 = 'admin' OR EXISTS (
+               SELECT 1 FROM assignment_members am WHERE am.assignment_id = a.id AND am.user_id = $2
+             ))
+           WHERE s.min_lon >= $3 AND s.max_lon <= $4 AND s.min_lat >= $5 AND s.max_lat <= $6
            ORDER BY s.shop_id
-           LIMIT $5`,
-          [minLon, maxLon, minLat, maxLat, limit]
+           LIMIT $7`,
+          [request.user!.role, request.user!.id, minLon, maxLon, minLat, maxLat, limit]
         );
       } else {
         result = await pool.query(
           `SELECT s.shop_id, s.geometry, s.centroid_lat, s.centroid_lon,
-                  sv.shop_name, sv.activity, sv.building_condition
+                  sv.shop_name, sv.activity, sv.building_condition,
+                  a.id AS assignment_id,
+                  CASE WHEN a.id IS NULL THEN NULL ELSE COALESCE(am.color_snapshot, a.primary_color) END AS assignment_color
            FROM shops s
            LEFT JOIN surveys sv ON sv.shop_id = s.shop_id
+           LEFT JOIN assignment_shops ash ON ash.shop_id = s.shop_id
+           LEFT JOIN assignment_members am ON am.assignment_id = ash.assignment_id AND am.user_id = ash.member_id
+           LEFT JOIN assignments a ON a.id = ash.assignment_id AND a.status = 'active'
+             AND ($1 = 'admin' OR EXISTS (
+               SELECT 1 FROM assignment_members am WHERE am.assignment_id = a.id AND am.user_id = $2
+             ))
            ORDER BY s.shop_id
-           LIMIT $1`,
-          [limit]
+           LIMIT $3`,
+          [request.user!.role, request.user!.id, limit]
         );
       }
 
@@ -62,7 +78,9 @@ export function registerShopRoutes(app: FastifyInstance): void {
             activity: row.activity,
             building_condition: row.building_condition,
             centroid_lat: row.centroid_lat,
-            centroid_lon: row.centroid_lon
+            centroid_lon: row.centroid_lon,
+            assignment_id: row.assignment_id,
+            assignment_color: row.assignment_color
           },
           geometry: row.geometry
         })),

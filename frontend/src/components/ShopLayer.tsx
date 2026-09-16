@@ -30,10 +30,30 @@ export default function ShopLayer({ shops, selectedShopId, onShopSelected }: Sho
         const props = (feature?.properties || {}) as Record<string, unknown>;
         const selected = props.shop_id === selectedRef.current;
         const surveyed = Boolean(props.surveyed);
-        if (selected) return { ...COLORS.selected };
-        return surveyed
+        const statusStyle = surveyed
           ? { ...COLORS.surveyed, fillOpacity: 0.55, weight: 1.2 }
           : { ...COLORS.unsurveyed, fillOpacity: 0.55, weight: 1.2 };
+        const assignmentColor = typeof props.assignment_color === 'string'
+          ? props.assignment_color
+          : null;
+        if (selected) {
+          // An assigned shop keeps its team color even while selected; the
+          // thicker outline supplies the selection affordance without hiding
+          // the red/green survey status fill.
+          return assignmentColor
+            ? { ...statusStyle, color: assignmentColor, weight: 3.2, dashArray: '2 2' }
+            : { ...COLORS.selected };
+        }
+        // Keep red/green as the survey-status semantics. Assignment colors
+        // are only used as a stronger outline and light halo.
+        return assignmentColor
+          ? {
+              ...statusStyle,
+              color: assignmentColor,
+              weight: 2.4,
+              dashArray: surveyed ? undefined : '4 2'
+            }
+          : statusStyle;
       },
       onEachFeature: (feature, layerItem) => {
         layerItem.on('click', () => {

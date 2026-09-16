@@ -40,7 +40,8 @@ export async function loginCookie(
 
 export function resetDb(): Promise<QueryResult> {
   return pool.query(
-    `TRUNCATE shops, surveys, messages, app_meta RESTART IDENTITY CASCADE;
+    `TRUNCATE assignment_shops, assignment_members, assignment_previews, assignments,
+               shops, surveys, messages, app_meta RESTART IDENTITY CASCADE;
      DELETE FROM users WHERE username NOT IN ('admin', 'jafari', 'moradi', 'kamali');`
   );
 }

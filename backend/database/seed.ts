@@ -4,6 +4,7 @@ import { pool } from '../src/db';
 import { hashPassword } from '../src/services/auth.service';
 import { applyImport, previewImport } from '../src/services/import.service';
 import { logger } from '../src/logger';
+import { assignmentColorForUserId } from '../src/services/assignment.service';
 
 /**
  * DEVELOPMENT seed. Never use these credentials in production:
@@ -36,9 +37,21 @@ async function seedUsers(): Promise<void> {
     ]);
     logger.info('seed.user.created', { username: user.username, role: user.role });
   }
-  logger.warn('seed.credentials', {
+    logger.warn('seed.credentials', {
     hint: 'Development only. Change passwords in backend/database/seed.ts before production.'
   });
+
+  // Seeded users are inserted after migrations, so give them the same
+  // deterministic distinct defaults that the migration gives existing users.
+  const seeded = await pool.query<{ id: number; username: string }>(
+    `SELECT id, username FROM users WHERE username = ANY($1::text[]) ORDER BY id`,
+    [SEED_USERS.map((user) => user.username)]
+  );
+  for (const user of seeded.rows) {
+    await pool.query('UPDATE users SET assignment_color = $1 WHERE id = $2 AND assignment_color = $3', [
+      assignmentColorForUserId(user.id), user.id, '#2563eb'
+    ]);
+  }
 }
 
 async function seedShops(): Promise<void> {

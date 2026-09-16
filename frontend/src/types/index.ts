@@ -5,6 +5,7 @@ export interface User {
   username: string;
   role: Role;
   is_active?: boolean;
+  assignment_color?: string;
 }
 
 export interface SessionInfo {
@@ -22,6 +23,8 @@ export interface GeoJsonFeature extends GeoJSON.Feature {
     building_condition?: string | null;
     centroid_lat?: number;
     centroid_lon?: number;
+    assignment_id?: string | null;
+    assignment_color?: string | null;
     [key: string]: unknown;
   };
 }
@@ -131,6 +134,47 @@ export interface AppMessage {
 export interface MessagesResponse {
   messages: AppMessage[];
   unread: number;
+}
+
+export interface AssignmentMember {
+  user_id: number;
+  username: string;
+  color: string;
+  initials: string;
+}
+
+export type AssignmentStatus = 'active' | 'completed' | 'cancelled' | 'archived';
+
+export interface Assignment {
+  id: string;
+  requested_count: number;
+  actual_count: number;
+  surveyed_count: number;
+  status: AssignmentStatus;
+  created_at: string;
+  completed_at: string | null;
+  archived_at: string | null;
+  primary_color: string;
+  color_snapshot: AssignmentMember[];
+  members: AssignmentMember[];
+  shop_ids: string[];
+}
+
+export interface AssignmentSurveyor {
+  id: number;
+  username: string;
+  color: string;
+  initials: string;
+}
+
+export interface AssignmentPreview {
+  previewId: string;
+  requestedCount: number;
+  actualCount: number;
+  sufficient: boolean;
+  reason: string | null;
+  members: AssignmentMember[];
+  shops: GeoJSON.FeatureCollection;
 }
 
 export type AdminShopsSortKey =

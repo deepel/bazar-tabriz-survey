@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { api, isUnauthorized } from '../api/client';
 import Header from '../components/Header';
+import AssignmentLegend from '../components/AssignmentLegend';
+import AssignmentPlanner from '../components/AssignmentPlanner';
 import LayerControl from '../components/LayerControl';
 import LoadingState from '../components/LoadingState';
 import MapView from '../components/MapView';
@@ -14,8 +16,18 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { useGisLayers } from '../hooks/useGisLayers';
-import type { GeoJsonFeature, GisLayer, MessagesResponse, OptionsResponse, ShopsResponse, Stats } from '../types';
+import type {
+  Assignment,
+  AssignmentPreview,
+  GeoJsonFeature,
+  GisLayer,
+  MessagesResponse,
+  OptionsResponse,
+  ShopsResponse,
+  Stats
+} from '../types';
 import { formatNumber } from '../utils/format';
+import { assignmentLegendMembers } from '../utils/assignments';
 
 interface Viewport {
   minLon: number;
@@ -40,6 +52,8 @@ export default function SurveyMap() {
   });
   const [viewport, setViewport] = useState<Viewport | null>(null);
   const [unread, setUnread] = useState(0);
+  const [activeAssignments, setActiveAssignments] = useState<Assignment[]>([]);
+  const [assignmentPreview, setAssignmentPreview] = useState<AssignmentPreview | null>(null);
   const [baseMap, setBaseMap] = useState<'osm' | 'satellite' | 'none'>(() => {
     if (typeof window === 'undefined') return 'osm';
     const saved = window.localStorage.getItem('survey-base-map-mode');
@@ -81,6 +95,15 @@ export default function SurveyMap() {
     }
   }, []);
 
+  const fetchActiveAssignments = useCallback(async () => {
+    try {
+      const result = await api.get<{ assignments: Assignment[] }>('/api/assignments/active');
+      setActiveAssignments(result.assignments);
+    } catch {
+      // The map remains usable even if assignment metadata is temporarily unavailable.
+    }
+  }, []);
+
   const fetchShops = useCallback(
     async (bounds?: Viewport) => {
       const bbox = bounds
@@ -113,9 +136,10 @@ export default function SurveyMap() {
       if (statsData) setStats(statsData);
       if (optionsData) setOptions(optionsData);
       await fetchShops();
+      await fetchActiveAssignments();
       setLoading(false);
     })();
-  }, [fetchShops]);
+  }, [fetchActiveAssignments, fetchShops]);
 
   // Load only the shops inside the current viewport on pan; fall back to a
   // full request (capped) if the viewport was never reported yet.
@@ -131,7 +155,8 @@ export default function SurveyMap() {
     setSelected(null);
     void fetchStats();
     void fetchShops(viewport ?? undefined);
-  }, [fetchStats, fetchShops, viewport]);
+    void fetchActiveAssignments();
+  }, [fetchActiveAssignments, fetchStats, fetchShops, viewport]);
 
   const progress = useMemo(() => {
     if (!stats) return null;
@@ -148,6 +173,10 @@ export default function SurveyMap() {
     () => (gisLayerConfig ?? []).filter((layer) => layer.enabled),
     [gisLayerConfig]
   );
+
+  const legendMembers = useMemo(() => {
+    return assignmentLegendMembers(activeAssignments, assignmentPreview?.members ?? []);
+  }, [activeAssignments, assignmentPreview]);
 
   if (loading) {
     return (
@@ -206,16 +235,9 @@ export default function SurveyMap() {
           onViewportChange={onViewportChange}
           layers={mapLayers}
           baseMap={baseMap}
+          assignmentPreview={assignmentPreview?.shops ?? null}
+          assignmentPreviewColor={assignmentPreview?.members[0]?.color}
         >
-          <LayerControl
-            layers={controlLayers}
-            visibility={layerVisibility}
-            baseMap={baseMap}
-            onBaseMapChange={setBaseMap}
-            onToggle={(layerKey, visible) =>
-              setLayerVisibility((prev) => ({ ...prev, [layerKey]: visible }))
-            }
-          />
           {selected && (
             <div className="absolute inset-x-0 bottom-0 z-[1000] p-3">
               <div className="mx-auto w-full max-w-lg">
@@ -231,6 +253,25 @@ export default function SurveyMap() {
             </div>
           )}
         </MapView>
+        <AssignmentLegend members={legendMembers} />
+        <AssignmentPlanner
+          currentUser={auth.user}
+          onPreviewChange={setAssignmentPreview}
+          onConfirmed={() => {
+            void fetchActiveAssignments();
+            void fetchShops(viewport ?? undefined);
+            void fetchStats();
+          }}
+        />
+        <LayerControl
+          layers={controlLayers}
+          visibility={layerVisibility}
+          baseMap={baseMap}
+          onBaseMapChange={setBaseMap}
+          onToggle={(layerKey, visible) =>
+            setLayerVisibility((prev) => ({ ...prev, [layerKey]: visible }))
+          }
+        />
       </div>
     </div>
   );

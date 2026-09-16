@@ -11,6 +11,7 @@ import {
   TILE_URL
 } from '../config/constants';
 import GisReferenceLayers from './GisReferenceLayers';
+import AssignmentPreviewLayer from './AssignmentPreviewLayer';
 import ShopLayer from './ShopLayer';
 import UserLocation from './UserLocation';
 
@@ -22,6 +23,8 @@ interface MapViewProps {
   onViewportChange: (bounds: { minLon: number; minLat: number; maxLon: number; maxLat: number }) => void;
   layers: GisLayer[];
   baseMap: 'osm' | 'satellite' | 'none';
+  assignmentPreview?: GeoJSON.FeatureCollection | null;
+  assignmentPreviewColor?: string;
   children?: ReactNode;
 }
 
@@ -33,6 +36,8 @@ export default function MapView({
   onViewportChange,
   layers,
   baseMap,
+  assignmentPreview = null,
+  assignmentPreviewColor,
   children
 }: MapViewProps) {
   return (
@@ -68,6 +73,7 @@ export default function MapView({
         )}
         <GisReferenceLayers layers={layers} />
         <ShopLayer shops={shops} selectedShopId={selectedShopId} onShopSelected={onShopSelected} />
+        <AssignmentPreviewLayer data={assignmentPreview} color={assignmentPreviewColor} />
         <UserLocation gps={gps} onViewportChange={onViewportChange} />
       </MapContainer>
       {gps.position && (

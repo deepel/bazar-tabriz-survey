@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { pool } from '../../db';
 import { requireAdmin } from '../../middleware/auth';
 import { hashPassword } from '../../services/auth.service';
+import { assignmentColorForUserId, validateAssignmentColor } from '../../services/assignment.service';
 import { AppError, sendFriendlyError } from '../../utils/errors';
 
 interface CreateUserBody {
@@ -14,6 +15,7 @@ interface UpdateUserBody {
   password?: string;
   role?: 'admin' | 'surveyor';
   is_active?: boolean;
+  assignment_color?: string;
 }
 
 export function registerAdminUserRoutes(app: FastifyInstance): void {
@@ -22,7 +24,7 @@ export function registerAdminUserRoutes(app: FastifyInstance): void {
     { preHandler: [requireAdmin] },
     async () => {
       const result = await pool.query(
-        `SELECT id, username, role, is_active, created_at,
+        `SELECT id, username, role, is_active, assignment_color, created_at,
                 (SELECT COUNT(*) FROM surveys sv WHERE sv.surveyor_id = users.id)::int AS survey_count
          FROM users
          ORDER BY id`
@@ -53,9 +55,15 @@ export function registerAdminUserRoutes(app: FastifyInstance): void {
         const { username, password, role } = request.body!;
         const passwordHash = await hashPassword(password as string);
         try {
-          const result = await pool.query(
-            'INSERT INTO users (username, password_hash, role) VALUES ($1,$2,$3) RETURNING id, username, role, is_active, created_at',
+          const inserted = await pool.query(
+            'INSERT INTO users (username, password_hash, role) VALUES ($1,$2,$3) RETURNING id',
             [username, passwordHash, role]
+          );
+          const result = await pool.query(
+            `UPDATE users SET assignment_color = $2
+             WHERE id = $1
+             RETURNING id, username, role, is_active, assignment_color, created_at`,
+            [inserted.rows[0].id, assignmentColorForUserId(inserted.rows[0].id)]
           );
           return reply.code(201).send({ user: result.rows[0] });
         } catch (err) {
@@ -94,13 +102,16 @@ export function registerAdminUserRoutes(app: FastifyInstance): void {
           push('role', request.body.role);
         }
         if (typeof request.body?.is_active === 'boolean') push('is_active', request.body.is_active);
+        if (request.body?.assignment_color !== undefined) {
+          push('assignment_color', validateAssignmentColor(request.body.assignment_color));
+        }
         if (values.length === 0) {
           throw new AppError(400, 'nothing_to_update', 'هیچ فیلدی برای ویرایش ارسال نشده است.');
         }
         values.push(id);
         await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id = $${values.length}`, values);
         const row = await pool.query(
-          'SELECT id, username, role, is_active, created_at FROM users WHERE id = $1',
+          'SELECT id, username, role, is_active, assignment_color, created_at FROM users WHERE id = $1',
           [id]
         );
         if (!row.rowCount) throw new AppError(404, 'user_not_found', 'کاربر یافت نشد.');
