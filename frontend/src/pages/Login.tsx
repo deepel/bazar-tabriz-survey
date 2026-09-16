@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { useAuth } from '../hooks/useAuth';
+import Logo from '../components/Logo';
 
 export default function Login() {
   const { login } = useAuth();
@@ -26,14 +27,13 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100 p-4">
-      <form onSubmit={handleSubmit} className="card w-full max-w-sm p-6 shadow-lg">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-lg font-bold text-white">
-            با
-          </div>
-          <h1 className="text-lg font-bold">سامانه برداشت میدانی بازار تبریز</h1>
-          <p className="mt-1 text-xs text-slate-400">ورود به حساب کاربری</p>
+    <div className="login-shell p-4">
+      <form onSubmit={handleSubmit} className="login-card w-full max-w-sm">
+        <div className="mb-8 text-center">
+          <Logo className="mx-auto justify-center" />
+          <div className="eyebrow mt-6">سامانه عملیات میدانی</div>
+          <h1 className="mt-2 text-xl font-bold tracking-tight">خوش آمدید</h1>
+          <p className="mt-2 text-sm text-slate-500">برای ادامه، وارد حساب کاربری خود شوید.</p>
         </div>
 
         <div className="space-y-4">

@@ -7,14 +7,14 @@
     font-family: Vazirmatn, Vazir, Tahoma, 'Segoe UI', system-ui, sans-serif;
   }
   body {
-    @apply bg-slate-100 text-slate-900 antialiased;
+    @apply bg-[#f4f1ec] text-[#25313b] antialiased;
   }
   button,
   a,
   input,
   select,
   textarea {
-    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1;
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-[#b35c3e] focus-visible:ring-offset-2;
   }
 }
 
@@ -23,27 +23,47 @@
     @apply inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium transition-colors select-none;
   }
   .btn-primary {
-    @apply btn bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn bg-[#a84f35] text-white shadow-sm hover:bg-[#8f402b] disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-danger {
     @apply btn bg-red-600 text-white hover:bg-red-700 disabled:opacity-50;
   }
   .btn-ghost {
-    @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50;
+    @apply btn border border-[#ded8ce] bg-white/90 text-slate-700 hover:border-[#bcae9e] hover:bg-[#faf8f4] disabled:opacity-50;
   }
   .btn-success {
     @apply btn bg-green-600 text-white hover:bg-green-700 disabled:opacity-50;
   }
   .input {
-    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm placeholder:text-slate-400;
+    @apply w-full rounded-xl border border-[#d9d2c8] bg-[#fffdfa] px-3.5 py-3 text-sm placeholder:text-slate-400 transition-shadow;
   }
   .label {
     @apply mb-1 block text-sm font-medium text-slate-700;
   }
   .card {
-    @apply rounded-xl border border-slate-200 bg-white p-4 shadow-sm;
+    @apply rounded-2xl border border-[#e4ddd3] bg-[#fffdfa] p-4 shadow-[0_8px_30px_rgba(61,48,36,0.08)];
   }
 }
+
+@layer components {
+  .app-header { @apply border-b border-[#e4ddd3] bg-[#fffdfa]/95 shadow-[0_2px_14px_rgba(61,48,36,0.06)] backdrop-blur; }
+  .brand-mark { @apply flex items-center gap-2.5; }
+  .brand-image { @apply h-10 w-10 rounded-xl object-contain; }
+  .brand-copy { @apply flex flex-col leading-tight; }
+  .brand-copy strong { @apply text-sm font-extrabold tracking-tight text-[#29343c]; }
+  .brand-copy small { @apply mt-0.5 text-[9px] font-medium tracking-wide text-[#927e6d]; }
+  .brand-mark-compact .brand-image { @apply h-9 w-24; }
+  .eyebrow { @apply text-[10px] font-bold tracking-[.18em] text-[#a84f35]; }
+  .login-shell { @apply flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_15%_10%,#e8d8c8_0,transparent_32%),#f4f1ec]; }
+  .login-card { @apply rounded-[1.75rem] border border-[#e4ddd3] bg-[#fffdfa] p-7 shadow-[0_22px_70px_rgba(61,48,36,.13)]; animation: rise-in .45s ease-out both; }
+  .loading-screen { @apply flex min-h-screen flex-col items-center justify-center gap-4 bg-[#f4f1ec] text-[#927e6d]; }
+  .loading-line { @apply h-1 w-32 overflow-hidden rounded-full bg-[#e4ddd3] after:block after:h-full after:w-1/2 after:animate-[loading_1.1s_ease-in-out_infinite] after:rounded-full after:bg-[#a84f35]; }
+  .loading-message { @apply text-xs; }
+}
+
+@keyframes rise-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes loading { from { transform: translateX(200%); } to { transform: translateX(-200%); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 
 /* Leaflet container must have an explicit height. */
 .leaflet-container {

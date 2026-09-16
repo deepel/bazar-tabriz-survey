@@ -1,4 +1,5 @@
 import { useAuth } from '../hooks/useAuth';
+import Logo from './Logo';
 
 export default function Header({
   center,
@@ -12,13 +13,9 @@ export default function Header({
   const auth = useAuth();
 
   return (
-    <header className="relative z-50 flex items-center gap-3 border-b border-slate-200 bg-white px-3 py-2.5 shadow-sm">
-      <div className="flex items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-[11px] font-bold text-white shadow-sm">
-          با
-        </span>
-        <span className="hidden text-sm font-semibold sm:inline">بازار تبریز</span>
-      </div>
+    <header className="app-header relative z-50 flex items-center gap-3 px-3 py-2.5">
+      <Logo compact className="sm:hidden" />
+      <Logo className="hidden sm:flex" />
       {center && <div className="flex-1 px-2 text-center text-xs font-medium text-slate-500">{center}</div>}
       <div className="flex items-center gap-2">
         {right}
