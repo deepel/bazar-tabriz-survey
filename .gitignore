@@ -9,3 +9,4 @@ backend/*.tgz
 # PostgreSQL local data if anyone runs it from this folder
 pgdata/
 backend/gis-cache/
+backend/logs/

@@ -7,6 +7,7 @@ import Header from '../components/Header';
 import LoadingState from '../components/LoadingState';
 import MessagesPanel from '../components/MessagesPanel';
 import StatsCards from '../components/StatsCards';
+import SystemLogPanel from '../components/SystemLogPanel';
 import SurveyorLeaderboard from '../components/SurveyorLeaderboard';
 import { useAuth } from '../hooks/useAuth';
 import type {
@@ -148,6 +149,8 @@ export default function AdminDashboard() {
         )}
 
         <StatsCards stats={stats} />
+
+        <SystemLogPanel />
 
         <div className="grid gap-4 lg:grid-cols-2">
           <section className="card space-y-3">

@@ -63,3 +63,15 @@ export function downloadGeojson(data: unknown, suggestedName: string): void {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+export function downloadJson(data: unknown, suggestedName: string): void {
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: 'application/json;charset=utf-8'
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = suggestedName;
+  a.click();
+  URL.revokeObjectURL(url);
+}

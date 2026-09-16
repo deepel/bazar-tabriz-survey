@@ -1,5 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { COOKIE_NAME, verifySession, type AuthUser } from '../services/auth.service';
+import { logger } from '../logger';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -21,6 +22,7 @@ export function authenticate(
 ): void {
   const user = extractUser(request);
   if (!user) {
+    logger.warn('auth.session.missing', { method: request.method, url: request.url });
     reply.code(401).send({ error: 'not_authenticated', message: 'نشست شما منقضی شده است. لطفاً دوباره وارد شوید.' });
     return;
   }
@@ -35,10 +37,12 @@ export function requireAdmin(
 ): void {
   const user = extractUser(request);
   if (!user) {
+    logger.warn('auth.session.missing', { method: request.method, url: request.url, requiredRole: 'admin' });
     reply.code(401).send({ error: 'not_authenticated', message: 'نشست شما منقضی شده است. لطفاً دوباره وارد شوید.' });
     return;
   }
   if (user.role !== 'admin') {
+    logger.warn('auth.forbidden', { method: request.method, url: request.url, userId: user.id, username: user.username });
     reply.code(403).send({ error: 'forbidden', message: 'شما دسترسی مدیر را ندارید.' });
     return;
   }

@@ -5,6 +5,7 @@ import type { GeoJsonFeature, GisLayer, GpsState, ShopsResponse } from '../types
 import {
   MAP,
   MAP_BOUNDS,
+  SATELLITE_TILE_URL,
   TABRIZ_CENTER,
   TILE_MAX_NATIVE_ZOOM,
   TILE_URL
@@ -20,6 +21,7 @@ interface MapViewProps {
   onShopSelected: (feature: GeoJsonFeature) => void;
   onViewportChange: (bounds: { minLon: number; minLat: number; maxLon: number; maxLat: number }) => void;
   layers: GisLayer[];
+  baseMap: 'osm' | 'satellite' | 'none';
   children?: ReactNode;
 }
 
@@ -30,6 +32,7 @@ export default function MapView({
   onShopSelected,
   onViewportChange,
   layers,
+  baseMap,
   children
 }: MapViewProps) {
   return (
@@ -47,12 +50,22 @@ export default function MapView({
             makes Leaflet upscale the top tiles instead of requesting the
             missing z≥20 tiles, so the base map never goes blank when zoomed
             in far enough to inspect individual shops. */}
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url={TILE_URL}
-          maxZoom={MAP.maxZoom}
-          maxNativeZoom={TILE_MAX_NATIVE_ZOOM}
-        />
+        {baseMap === 'osm' && (
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url={TILE_URL}
+            maxZoom={MAP.maxZoom}
+            maxNativeZoom={TILE_MAX_NATIVE_ZOOM}
+          />
+        )}
+        {baseMap === 'satellite' && (
+          <TileLayer
+            attribution='&copy; Google'
+            url={SATELLITE_TILE_URL}
+            maxZoom={MAP.maxZoom}
+            maxNativeZoom={20}
+          />
+        )}
         <GisReferenceLayers layers={layers} />
         <ShopLayer shops={shops} selectedShopId={selectedShopId} onShopSelected={onShopSelected} />
         <UserLocation gps={gps} onViewportChange={onViewportChange} />

@@ -5,6 +5,8 @@ interface LayerControlProps {
   layers: GisLayer[];
   visibility: Record<string, boolean>;
   onToggle: (layerKey: string, visible: boolean) => void;
+  baseMap?: 'osm' | 'satellite' | 'none';
+  onBaseMapChange?: (mode: 'osm' | 'satellite' | 'none') => void;
 }
 
 const MASK_KEY = 'bazar-area';
@@ -14,7 +16,13 @@ const MASK_KEY = 'bazar-area';
  * straight away; hiding the bazaar mask requires a confirming second click so
  * it cannot be switched off accidentally.
  */
-export default function LayerControl({ layers, visibility, onToggle }: LayerControlProps) {
+export default function LayerControl({
+  layers,
+  visibility,
+  onToggle,
+  baseMap = 'osm',
+  onBaseMapChange
+}: LayerControlProps) {
   const [open, setOpen] = useState(true);
   const [confirming, setConfirming] = useState<string | null>(null);
   const confirmTimer = useRef<number | undefined>(undefined);
@@ -45,17 +53,42 @@ export default function LayerControl({ layers, visibility, onToggle }: LayerCont
   }
 
   return (
-    <div className="absolute right-3 top-3 z-[1000] w-44 rounded-lg border border-slate-200 bg-white shadow-md">
+    <div className={`absolute right-3 top-3 z-[1000] ${open ? 'w-60' : 'w-11'}`}>
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center justify-between px-3 py-2 text-xs font-bold text-slate-700"
+        className="flex h-11 w-11 items-center justify-center rounded-full border border-[#ded8ce] bg-[#fffdfa]/95 text-lg text-[#40515d] shadow-[0_8px_24px_rgba(37,49,59,.18)] backdrop-blur transition hover:bg-white"
+        aria-label={open ? 'بستن منوی لایه‌ها' : 'باز کردن منوی لایه‌ها'}
+        title={open ? 'بستن منوی لایه‌ها' : 'لایه‌ها و نقشه پایه'}
       >
-        <span>لایه‌های مرجع</span>
-        <span className="text-slate-400">{open ? '−' : '+'}</span>
+        <span aria-hidden="true">{open ? '×' : '◈'}</span>
       </button>
       {open && (
-        <div className="space-y-1 border-t border-slate-100 p-2">
+        <div className="absolute right-0 top-12 w-60 space-y-2 rounded-2xl border border-[#ded8ce] bg-[#fffdfa]/95 p-2.5 shadow-[0_14px_36px_rgba(37,49,59,.18)] backdrop-blur">
+          <div className="px-2 pb-1 text-[11px] font-bold text-[#40515d]">نمایش نقشه</div>
+          {onBaseMapChange && (
+            <div className="grid grid-cols-3 gap-1 rounded-xl bg-[#f2eee8] p-1">
+              {([
+                ['osm', 'نقشه', '⌁'],
+                ['satellite', 'ماهواره‌ای', '▦'],
+                ['none', 'خاموش', '○']
+              ] as const).map(([mode, label, icon]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => onBaseMapChange(mode)}
+                  className={`flex flex-col items-center gap-0.5 rounded-lg px-1 py-2 text-[10px] transition ${
+                    baseMap === mode ? 'bg-white font-bold text-[#a84f35] shadow-sm' : 'text-slate-500 hover:bg-white/70'
+                  }`}
+                  aria-pressed={baseMap === mode}
+                >
+                  <span className="text-sm" aria-hidden="true">{icon}</span>
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="border-t border-[#eee8df] pt-1 text-[11px] font-bold text-[#40515d]">لایه‌های مرجع</div>
           {layers.map((layer) => {
             const visible = visibility[layer.layer_key] !== false;
             const isArmedConfirm = confirming === layer.layer_key;

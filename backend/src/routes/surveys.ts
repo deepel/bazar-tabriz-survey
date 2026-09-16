@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { ACTIVITIES, BUILDING_CONDITIONS } from '../config';
 import { authenticate } from '../middleware/auth';
+import { logger } from '../logger';
 import { listSurveys, saveSurvey } from '../services/survey.service';
 import { AppError } from '../utils/errors';
 
@@ -39,28 +40,44 @@ export function registerSurveyRoutes(app: FastifyInstance): void {
     async (request, reply) => {
       const body = request.body!;
       if (!ACTIVITIES.includes(body.activity as (typeof ACTIVITIES)[number])) {
+        logger.warn('survey.failed', { shopId: body.shop_id, userId: request.user!.id, reason: 'invalid_activity' });
         throw new AppError(400, 'invalid_activity', 'نوع فعالیت انتخاب‌شده معتبر نیست.');
       }
       if (body.activity === 'سایر' && !body.activity_other?.trim()) {
+        logger.warn('survey.failed', { shopId: body.shop_id, userId: request.user!.id, reason: 'missing_activity_other' });
         throw new AppError(400, 'invalid_activity', 'لطفاً نوع فعالیت را در فیلد «سایر» وارد کنید.');
       }
       if (
         !BUILDING_CONDITIONS.includes(body.building_condition as (typeof BUILDING_CONDITIONS)[number])
       ) {
+        logger.warn('survey.failed', { shopId: body.shop_id, userId: request.user!.id, reason: 'invalid_condition' });
         throw new AppError(400, 'invalid_condition', 'وضعیت ساختمان انتخاب‌شده معتبر نیست.');
       }
       const lat = body.survey_lat;
       const lon = body.survey_lon;
 
-      const { survey, created } = await saveSurvey(request.user!.id, {
-        shop_id: body.shop_id,
-        shop_name: body.shop_name?.trim() || null,
-        activity: body.activity ?? null,
-        activity_other: body.activity_other?.trim() || null,
-        building_condition: body.building_condition ?? null,
-        survey_lat: lat ?? null,
-        survey_lon: lon ?? null
-      });
+      let survey: Awaited<ReturnType<typeof saveSurvey>>['survey'];
+      let created = false;
+      try {
+        const result = await saveSurvey(request.user!.id, {
+          shop_id: body.shop_id,
+          shop_name: body.shop_name?.trim() || null,
+          activity: body.activity ?? null,
+          activity_other: body.activity_other?.trim() || null,
+          building_condition: body.building_condition ?? null,
+          survey_lat: lat ?? null,
+          survey_lon: lon ?? null
+        });
+        survey = result.survey;
+        created = result.created;
+      } catch (err) {
+        logger.error('survey.failed', {
+          shopId: body.shop_id,
+          userId: request.user!.id,
+          message: (err as Error).message
+        });
+        throw err;
+      }
 
       return reply.code(created ? 201 : 200).send({
         ok: true,

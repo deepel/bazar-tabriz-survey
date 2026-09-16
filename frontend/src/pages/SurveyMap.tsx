@@ -40,9 +40,18 @@ export default function SurveyMap() {
   });
   const [viewport, setViewport] = useState<Viewport | null>(null);
   const [unread, setUnread] = useState(0);
+  const [baseMap, setBaseMap] = useState<'osm' | 'satellite' | 'none'>(() => {
+    if (typeof window === 'undefined') return 'osm';
+    const saved = window.localStorage.getItem('survey-base-map-mode');
+    return saved === 'satellite' || saved === 'none' ? saved : 'osm';
+  });
 
   const { layers: gisLayerConfig } = useGisLayers();
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    window.localStorage.setItem('survey-base-map-mode', baseMap);
+  }, [baseMap]);
 
   useEffect(() => {
     if (!gisLayerConfig || gisLayerConfig.length === 0) return;
@@ -196,10 +205,13 @@ export default function SurveyMap() {
           onShopSelected={setSelected}
           onViewportChange={onViewportChange}
           layers={mapLayers}
+          baseMap={baseMap}
         >
           <LayerControl
             layers={controlLayers}
             visibility={layerVisibility}
+            baseMap={baseMap}
+            onBaseMapChange={setBaseMap}
             onToggle={(layerKey, visible) =>
               setLayerVisibility((prev) => ({ ...prev, [layerKey]: visible }))
             }

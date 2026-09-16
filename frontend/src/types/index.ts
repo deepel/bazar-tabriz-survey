@@ -86,6 +86,16 @@ export interface GithubStatus {
   interval?: number;
 }
 
+export type SystemLogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+export interface SystemLog {
+  id: number;
+  created_at: string;
+  level: SystemLogLevel;
+  event: string;
+  details: Record<string, unknown>;
+}
+
 export interface CategoryCount {
   activity: string;
   count: number;

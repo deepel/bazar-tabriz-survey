@@ -10,6 +10,7 @@ import { registerAdminGisLayerRoutes } from './routes/admin/gis-layers';
 import { registerGisLayerRoutes } from './routes/gis-layers';
 import { registerAdminShopRoutes } from './routes/admin/shops';
 import { registerAdminStatsRoutes } from './routes/admin/stats';
+import { registerAdminSystemLogRoutes } from './routes/admin/system-logs';
 import { registerAdminUserRoutes } from './routes/admin/users';
 import { registerAuthRoutes } from './routes/auth';
 import { registerMessageRoutes } from './routes/messages';
@@ -31,9 +32,15 @@ export async function buildApp(): Promise<FastifyInstance> {
     credentials: true
   });
 
-  app.setErrorHandler((err, _request, reply) => {
+  app.setErrorHandler((err, request, reply) => {
+    const requestDetails = {
+      method: request.method,
+      url: request.url,
+      userId: request.user?.id,
+      username: request.user?.username
+    };
     if (err instanceof AppError) {
-      logger.warn('http.error', { code: err.code, statusCode: err.statusCode });
+      logger.warn('http.error', { ...requestDetails, code: err.code, statusCode: err.statusCode });
       return reply.code(err.statusCode).send({ error: err.code, message: err.message });
     }
     if (err.statusCode === 400) {
@@ -42,14 +49,16 @@ export async function buildApp(): Promise<FastifyInstance> {
       const message = first
         ? 'داده‌های ارسال‌شده معتبر نیست: ' + first.instancePath + ' ' + first.message
         : 'داده‌های ارسال‌شده معتبر نیست.';
+      logger.warn('http.validation_failed', { ...requestDetails, statusCode: 400, message });
       return reply.code(400).send({ error: 'validation_failed', message });
     }
     if (err.statusCode === 413) {
+      logger.warn('http.payload_too_large', { ...requestDetails, statusCode: 413 });
       return reply
         .code(413)
         .send({ error: 'payload_too_large', message: 'فایل ارسال‌شده بیش از حد بزرگ است.' });
     }
-    logger.error('http.fatal', { message: err.message });
+    logger.error('http.fatal', { ...requestDetails, message: err.message, statusCode: err.statusCode });
     return reply
       .code(500)
       .send({ error: 'internal_error', message: 'خطای داخلی سرور رخ داد. لطفاً دوباره تلاش کنید.' });
@@ -67,6 +76,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   registerSurveyRoutes(app);
   registerAdminUserRoutes(app);
   registerAdminStatsRoutes(app);
+  registerAdminSystemLogRoutes(app);
   registerAdminShopRoutes(app);
   registerAdminGeoJsonRoutes(app);
   registerAdminGitHubRoutes(app);

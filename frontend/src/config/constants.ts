@@ -40,6 +40,13 @@ export const MAP = {
 // options the highest available tiles are loaded and upscaled instead.
 export const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 export const TILE_MAX_NATIVE_ZOOM = 19;
+// Configurable so a production deployment can use an official Google Maps
+// tile/API configuration without changing the map component. The fallback is
+// useful for local preview only; production deployments should use a licensed
+// Google Maps tile endpoint and key.
+export const SATELLITE_TILE_URL =
+  import.meta.env.VITE_GOOGLE_SATELLITE_TILE_URL ||
+  'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
 
 // Loose maximum bounds around Tabriz so the map cannot be panned too far
 // away from the bazaar while inspecting it.
