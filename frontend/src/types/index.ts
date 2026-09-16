@@ -180,6 +180,8 @@ export interface GisLayer {
   source_url: string;
   order_index: number;
   cache_version: number;
+  min_zoom?: number;
+  detail_zoom?: number;
   updated_at: string;
 }
 

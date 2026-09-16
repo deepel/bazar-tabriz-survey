@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { useMap } from 'react-leaflet';
+import { api } from '../api/client';
 import type { GisLayer } from '../types';
 import {
   GIS_MASK_PANE,
@@ -8,7 +9,6 @@ import {
   GIS_REF_PANE,
   GIS_REF_PANE_Z
 } from '../config/constants';
-import { loadLayerData } from '../lib/gisLayerData';
 
 /**
  * Renders the historical bazaar reference layers (mask, buildings, lines,
@@ -56,23 +56,48 @@ function isMaskLayer(layerKey: string): boolean {
 
 function ReferenceLayer({ layer }: { layer: GisLayer }) {
   const map = useMap();
+  const minZoom = layer.min_zoom ?? 0;
   const [data, setData] = useState<GeoJSON.FeatureCollection | null>(null);
-  const loadedKeyRef = useRef<string | null>(null);
+  const requestRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    const cacheKey = `${layer.source_url}#${layer.cache_version}`;
-    if (loadedKeyRef.current === cacheKey) return undefined;
     let cancelled = false;
+    let timer: number | undefined;
+    const load = async () => {
+      requestRef.current?.abort();
+      const controller = new AbortController();
+      requestRef.current = controller;
+      const bounds = map.getBounds();
+      const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()].join(',');
+      const zoom = map.getZoom();
+      if (zoom < minZoom) {
+        setData(null);
+        return;
+      }
+      try {
+        const collection = await api.get<GeoJSON.FeatureCollection>(
+          `/api/gis-layers/${encodeURIComponent(layer.layer_key)}/data?bbox=${bbox}&zoom=${zoom}`,
+          { signal: controller.signal }
+        );
+        if (!cancelled) setData(collection);
+      } catch {
+        if (!cancelled) setData(null);
+      }
+    };
+    const schedule = () => {
+      if (timer !== undefined) window.clearTimeout(timer);
+      timer = window.setTimeout(() => void load(), 120);
+    };
     setData(null);
-    void loadLayerData(layer).then((collection) => {
-      if (cancelled) return;
-      loadedKeyRef.current = cacheKey;
-      setData(collection);
-    });
+    void load();
+    map.on('moveend zoomend', schedule);
     return () => {
       cancelled = true;
+      requestRef.current?.abort();
+      if (timer !== undefined) window.clearTimeout(timer);
+      map.off('moveend zoomend', schedule);
     };
-  }, [map, layer]);
+  }, [map, layer.layer_key, layer.cache_version, minZoom]);
 
   useEffect(() => {
     if (!data) return undefined;

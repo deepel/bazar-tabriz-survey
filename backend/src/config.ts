@@ -26,6 +26,10 @@ export const config = {
     .map((s) => s.trim()),
 
   maxGeoJsonSize: intEnv('MAX_GEOJSON_SIZE', 50_000_000),
+  // Reference layers are fetched by the server and materialized outside the
+  // shop import flow. A large lines layer must not change the shop contract.
+  gisSourceMaxBytes: intEnv('GIS_SOURCE_MAX_BYTES', 250_000_000),
+  gisCacheDir: path.resolve(__dirname, '..', 'gis-cache'),
   // Default EPSG for the source AutoCAD-exported GeoJSON files.
   sourceEpsg: intEnv('SOURCE_EPSG', 32638),
 

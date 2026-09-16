@@ -12,6 +12,7 @@ export class ApiError extends Error {
 interface ApiOptions {
   method?: string;
   body?: unknown;
+  signal?: AbortSignal;
 }
 
 async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
@@ -19,7 +20,8 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
     method: options.method || 'GET',
     credentials: 'include',
     headers: options.body ? { 'Content-Type': 'application/json' } : undefined,
-    body: options.body ? JSON.stringify(options.body) : undefined
+    body: options.body ? JSON.stringify(options.body) : undefined,
+    signal: options.signal
   });
 
   let data: unknown = null;
@@ -41,7 +43,7 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>(path),
+  get: <T>(path: string, options: ApiOptions = {}) => request<T>(path, options),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PATCH', body })
 };

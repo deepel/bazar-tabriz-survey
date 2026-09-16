@@ -8,12 +8,14 @@ export interface GisLayerRow {
   source_url: string;
   order_index: number;
   cache_version: number;
+  min_zoom: number;
+  detail_zoom: number;
   updated_at: string;
 }
 
 export async function listGisLayers(): Promise<GisLayerRow[]> {
   const result = await pool.query(
-    `SELECT layer_key, display_name, enabled, source_url, order_index, cache_version, updated_at
+    `SELECT layer_key, display_name, enabled, source_url, order_index, cache_version, min_zoom, detail_zoom, updated_at
      FROM gis_layers
      ORDER BY order_index, layer_key`
   );
@@ -24,6 +26,8 @@ export interface GisLayerPatch {
   display_name?: unknown;
   enabled?: unknown;
   source_url?: unknown;
+  min_zoom?: unknown;
+  detail_zoom?: unknown;
 }
 
 function normalizeDisplayName(value: unknown): string | undefined {
@@ -67,6 +71,14 @@ function normalizeSourceUrl(value: unknown): string | undefined {
   return trimmed;
 }
 
+function normalizeZoom(value: unknown, field: string): number | undefined {
+  if (value === undefined) return undefined;
+  if (!Number.isInteger(value) || Number(value) < 0 || Number(value) > 24) {
+    throw new AppError(400, `invalid_${field}`, 'مقدار zoom باید عدد صحیحی بین ۰ و ۲۴ باشد.');
+  }
+  return Number(value);
+}
+
 export async function updateGisLayer(
   layerKey: string,
   patch: GisLayerPatch
@@ -74,8 +86,10 @@ export async function updateGisLayer(
   const displayName = normalizeDisplayName(patch.display_name);
   const enabled = normalizeEnabled(patch.enabled);
   const sourceUrl = normalizeSourceUrl(patch.source_url);
+  const minZoom = normalizeZoom(patch.min_zoom, 'min_zoom');
+  const detailZoom = normalizeZoom(patch.detail_zoom, 'detail_zoom');
 
-  if (displayName === undefined && enabled === undefined && sourceUrl === undefined) {
+  if (displayName === undefined && enabled === undefined && sourceUrl === undefined && minZoom === undefined && detailZoom === undefined) {
     throw new AppError(400, 'empty_update', 'هیچ فیلدی برای ویرایش ارسال نشده است.');
   }
 
@@ -94,13 +108,21 @@ export async function updateGisLayer(
     sets.push(`source_url = $${index++}`);
     values.push(sourceUrl);
   }
+  if (minZoom !== undefined) {
+    sets.push(`min_zoom = $${index++}`);
+    values.push(minZoom);
+  }
+  if (detailZoom !== undefined) {
+    sets.push(`detail_zoom = $${index++}`);
+    values.push(detailZoom);
+  }
   sets.push(`updated_at = now()`);
 
   const result = await pool.query(
     `UPDATE gis_layers
      SET ${sets.join(', ')}
      WHERE layer_key = $1
-     RETURNING layer_key, display_name, enabled, source_url, order_index, cache_version, updated_at`,
+     RETURNING layer_key, display_name, enabled, source_url, order_index, cache_version, min_zoom, detail_zoom, updated_at`,
     values
   );
   if (!result.rowCount) {
@@ -115,7 +137,7 @@ export async function refreshGisLayer(layerKey: string): Promise<GisLayerRow> {
     `UPDATE gis_layers
      SET cache_version = cache_version + 1, updated_at = now()
      WHERE layer_key = $1
-     RETURNING layer_key, display_name, enabled, source_url, order_index, cache_version, updated_at`,
+     RETURNING layer_key, display_name, enabled, source_url, order_index, cache_version, min_zoom, detail_zoom, updated_at`,
     [layerKey]
   );
   if (!result.rowCount) {

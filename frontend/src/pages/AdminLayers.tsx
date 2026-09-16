@@ -10,6 +10,8 @@ import { formatDate } from '../utils/format';
 interface Draft {
   display_name: string;
   source_url: string;
+  min_zoom: number;
+  detail_zoom: number;
 }
 
 async function fetchLayers(): Promise<GisLayer[]> {
@@ -32,7 +34,12 @@ export default function AdminLayers() {
         Object.fromEntries(
           data.map((layer) => [
             layer.layer_key,
-            { display_name: layer.display_name, source_url: layer.source_url }
+            {
+              display_name: layer.display_name,
+              source_url: layer.source_url,
+              min_zoom: layer.min_zoom ?? 0,
+              detail_zoom: layer.detail_zoom ?? 19
+            }
           ])
         )
       );
@@ -46,7 +53,7 @@ export default function AdminLayers() {
     void load();
   }, [load]);
 
-  function setField(layerKey: string, field: keyof Draft, value: string) {
+  function setField(layerKey: string, field: keyof Draft, value: string | number) {
     setDrafts((prev) => ({
       ...prev,
       [layerKey]: { ...prev[layerKey], [field]: value }
@@ -62,8 +69,13 @@ export default function AdminLayers() {
     try {
       await api.patch(`/api/admin/gis-layers/${encodeURIComponent(layer.layer_key)}`, {
         display_name: draft.display_name,
-        source_url: draft.source_url
+        source_url: draft.source_url,
+        min_zoom: draft.min_zoom,
+        detail_zoom: draft.detail_zoom
       });
+      if (draft.source_url !== layer.source_url) {
+        await api.post(`/api/admin/gis-layers/${encodeURIComponent(layer.layer_key)}/refresh`);
+      }
       setMessage(`«${draft.display_name}» ذخیره شد.`);
       await load();
     } catch (err) {
@@ -181,6 +193,32 @@ export default function AdminLayers() {
                   onChange={(e) => setField(layer.layer_key, 'source_url', e.target.value)}
                   aria-label="آدرس منبع"
                 />
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  <label className="flex items-center gap-1">
+                    نمایش از zoom
+                    <input
+                      className="input w-20 py-2 text-center"
+                      type="number"
+                      min={0}
+                      max={24}
+                      value={draft.min_zoom}
+                      onChange={(e) => setField(layer.layer_key, 'min_zoom', Number(e.target.value))}
+                      aria-label="حداقل zoom نمایش"
+                    />
+                  </label>
+                  <label className="flex items-center gap-1">
+                    جزئیات کامل از zoom
+                    <input
+                      className="input w-20 py-2 text-center"
+                      type="number"
+                      min={0}
+                      max={24}
+                      value={draft.detail_zoom}
+                      onChange={(e) => setField(layer.layer_key, 'detail_zoom', Number(e.target.value))}
+                      aria-label="zoom جزئیات کامل"
+                    />
+                  </label>
+                </div>
                 <div className="mt-1 flex flex-wrap gap-3 text-[11px] text-slate-400">
                   <span>نسخه کش: {layer.cache_version}</span>
                   <span>آخرین تغییر: {formatDate(layer.updated_at)}</span>
