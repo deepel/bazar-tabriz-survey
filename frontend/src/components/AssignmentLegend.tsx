@@ -10,7 +10,7 @@ export default function AssignmentLegend({ members }: AssignmentLegendProps) {
   if (members.length === 0) return null;
 
   return (
-    <div className={`absolute right-3 top-16 z-[1050] ${open ? 'w-56' : 'w-11'}`}>
+    <div className={`absolute bottom-3 right-16 z-[1050] ${open ? 'w-56' : 'w-11'}`}>
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -24,7 +24,7 @@ export default function AssignmentLegend({ members }: AssignmentLegendProps) {
         </span>
       </button>
       {open && (
-        <div className="absolute right-0 top-12 w-56 rounded-2xl border border-[#ded8ce] bg-[#fffdfa]/95 p-2.5 shadow-[0_14px_36px_rgba(37,49,59,.18)] backdrop-blur">
+        <div className="absolute bottom-12 right-0 w-56 rounded-2xl border border-[#ded8ce] bg-[#fffdfa]/95 p-2.5 shadow-[0_14px_36px_rgba(37,49,59,.18)] backdrop-blur">
           <div className="mb-1 px-2 text-[11px] font-bold text-[#40515d]">رنگ assignment</div>
           <div className="space-y-1">
             {members.map((member) => (

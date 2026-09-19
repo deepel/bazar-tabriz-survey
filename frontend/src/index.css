@@ -72,3 +72,28 @@
   font-family: inherit;
   z-index: 0;
 }
+
+.service-point-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #5b21b6;
+  border-radius: 7px;
+  background: #ede9fe;
+  color: #6d28d9;
+  font-size: 15px;
+  box-shadow: 0 2px 7px rgba(51, 27, 91, .35);
+}
+
+.door-point-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #92400e;
+  border-radius: 50%;
+  background: #fef3c7;
+  color: #b45309;
+  font-size: 16px;
+  font-weight: 800;
+  box-shadow: 0 2px 7px rgba(92, 49, 8, .35);
+}

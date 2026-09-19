@@ -10,6 +10,9 @@ export interface SurveyInput {
   activity: string | null;
   activity_other: string | null;
   building_condition: string | null;
+  floor: string;
+  instagram_status: string;
+  phone: string | null;
   survey_lat: number | null;
   survey_lon: number | null;
 }
@@ -32,13 +35,16 @@ export async function saveSurvey(surveyorId: number, input: SurveyInput) {
   const result = await pool.query(
     `INSERT INTO surveys
        (shop_id, shop_name, activity, activity_other, building_condition,
-        surveyor_id, surveyed_at, survey_lat, survey_lon)
-     VALUES ($1,$2,$3,$4,$5,$6, now(), $7,$8)
+        floor, instagram_status, phone, surveyor_id, surveyed_at, survey_lat, survey_lon)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, now(), $10,$11)
      ON CONFLICT (shop_id) DO UPDATE SET
        shop_name = EXCLUDED.shop_name,
        activity = EXCLUDED.activity,
        activity_other = EXCLUDED.activity_other,
        building_condition = EXCLUDED.building_condition,
+       floor = EXCLUDED.floor,
+       instagram_status = EXCLUDED.instagram_status,
+       phone = EXCLUDED.phone,
        surveyor_id = EXCLUDED.surveyor_id,
        surveyed_at = now(),
        survey_lat = EXCLUDED.survey_lat,
@@ -51,6 +57,9 @@ export async function saveSurvey(surveyorId: number, input: SurveyInput) {
       input.activity,
       input.activity_other ?? null,
       input.building_condition,
+      input.floor,
+      input.instagram_status,
+      input.phone ?? null,
       surveyorId,
       input.survey_lat ?? null,
       input.survey_lon ?? null

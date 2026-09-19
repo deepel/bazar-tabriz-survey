@@ -1,5 +1,14 @@
 import type { FastifyInstance } from 'fastify';
-import { ACTIVITIES, BUILDING_CONDITIONS } from '../config';
+import {
+  ACTIVITIES,
+  BUILDING_CONDITIONS,
+  FLOOR_LABELS,
+  FLOORS,
+  INSTAGRAM_STATUS_LABELS,
+  INSTAGRAM_STATUSES,
+  SERVICE_TYPE_LABELS,
+  SERVICE_TYPES
+} from '../config';
 import { pool } from '../db';
 import { authenticate } from '../middleware/auth';
 
@@ -22,6 +31,9 @@ export function registerStatsAndOptions(app: FastifyInstance): void {
 
   app.get('/api/options', { preHandler: [authenticate] }, async () => ({
     activities: ACTIVITIES,
-    buildingConditions: BUILDING_CONDITIONS
+    buildingConditions: BUILDING_CONDITIONS,
+    floors: FLOORS.map((value) => ({ value, label: FLOOR_LABELS[value] })),
+    instagramStatuses: INSTAGRAM_STATUSES.map((value) => ({ value, label: INSTAGRAM_STATUS_LABELS[value] })),
+    serviceTypes: SERVICE_TYPES.map((value) => ({ value, label: SERVICE_TYPE_LABELS[value] }))
   }));
 }

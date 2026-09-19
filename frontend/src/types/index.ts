@@ -38,11 +38,15 @@ export interface Stats {
   surveyed: number;
   unsurveyed: number;
   progress: number;
+  pointShops?: number;
 }
 
 export interface OptionsResponse {
   activities: string[];
   buildingConditions: string[];
+  floors?: Array<string | { value: string; label: string }>;
+  instagramStatuses?: Array<string | { value: string; label: string }>;
+  serviceTypes?: Array<{ value: string; label: string }>;
 }
 
 export interface ImportStats {
@@ -69,6 +73,9 @@ export interface SurveyPayload {
   activity: string;
   activity_other?: string;
   building_condition: string;
+  floor: string;
+  instagram_status: string;
+  phone?: string;
   survey_lat?: number | null;
   survey_lon?: number | null;
 }
@@ -178,10 +185,17 @@ export interface AssignmentPreview {
 }
 
 export type AdminShopsSortKey =
+  | 'record_type'
   | 'shop_name'
   | 'activity'
   | 'activity_other'
   | 'building_condition'
+  | 'floor'
+  | 'instagram_status'
+  | 'phone'
+  | 'service_type'
+  | 'opening_time'
+  | 'closing_time'
   | 'surveyed'
   | 'surveyor'
   | 'surveyed_at'
@@ -191,11 +205,23 @@ export type AdminShopsSortDirection = 'asc' | 'desc';
 
 export interface AdminShopRow {
   shop_id: string;
+  record_id: string;
+  record_type: 'shops' | 'shops-point' | 'services' | 'doors';
   shop_name: string | null;
   activity: string | null;
   activity_other: string | null;
   building_condition: string | null;
-  surveyed: boolean;
+  surveyed: boolean | null;
+  floor: string | null;
+  instagram_status: string | null;
+  phone: string | null;
+  service_type: string | null;
+  opening_time: string | null;
+  closing_time: string | null;
+  notes: string | null;
+  created_by_username: string | null;
+  created_at: string | null;
+  updated_at: string | null;
   surveyed_at: string | null;
   surveyor_username: string | null;
 }
@@ -217,6 +243,7 @@ export interface AdminShopsResponse {
 }
 
 export interface AdminShopsFilters {
+  record_type: '' | 'shops' | 'shops-point' | 'services' | 'doors';
   shop_name: string;
   activity: string;
   activity_other: string;
@@ -225,6 +252,71 @@ export interface AdminShopsFilters {
   surveyor: string;
   date_from: string;
   date_to: string;
+  floor: string;
+  instagram_status: string;
+  service_type: string;
+  opening_time: string;
+  closing_time: string;
+}
+
+export interface PointShopProperties {
+  point_shop_id: string;
+  shop_name: string | null;
+  activity: string;
+  activity_other: string | null;
+  building_condition: string;
+  floor: string;
+  instagram_status: string;
+  phone: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PointShopFeature extends GeoJSON.Feature<GeoJSON.Point> {
+  properties: PointShopProperties;
+}
+
+export interface PointShopsResponse extends GeoJSON.FeatureCollection<GeoJSON.Point> {
+  features: PointShopFeature[];
+}
+
+export interface ServicePointProperties {
+  service_point_id: string;
+  service_type: string;
+  name: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ServicePointFeature extends GeoJSON.Feature<GeoJSON.Point> {
+  properties: ServicePointProperties;
+}
+
+export interface ServicePointsResponse extends GeoJSON.FeatureCollection<GeoJSON.Point> {
+  features: ServicePointFeature[];
+}
+
+export interface DoorPointProperties {
+  door_point_id: string;
+  name: string;
+  opening_time: string;
+  closing_time: string;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DoorPointFeature extends GeoJSON.Feature<GeoJSON.Point> {
+  properties: DoorPointProperties;
+}
+
+export interface DoorPointsResponse extends GeoJSON.FeatureCollection<GeoJSON.Point> {
+  features: DoorPointFeature[];
 }
 
 export interface GisLayer {

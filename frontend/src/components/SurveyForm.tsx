@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, ApiError } from '../api/client';
-import { OTHER } from '../config/constants';
+import { FLOORS, INSTAGRAM_STATUSES, OTHER } from '../config/constants';
 import type { GeoJsonFeature, GpsState } from '../types';
 
 interface SurveyFormProps {
@@ -26,6 +26,9 @@ export default function SurveyForm({
   const [activity, setActivity] = useState('');
   const [activityOther, setActivityOther] = useState('');
   const [condition, setCondition] = useState('');
+  const [floor, setFloor] = useState('ground_floor');
+  const [instagramStatus, setInstagramStatus] = useState('not_checked');
+  const [phone, setPhone] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -33,7 +36,7 @@ export default function SurveyForm({
   useEffect(() => {
     void (async () => {
       try {
-        const detail = await api.get<{ survey: { shop_name: string | null; activity: string | null; activity_other: string | null; building_condition: string | null } | null }>(
+        const detail = await api.get<{ survey: { shop_name: string | null; activity: string | null; activity_other: string | null; building_condition: string | null; floor: string | null; instagram_status: string | null; phone: string | null } | null }>(
           `/api/shops/${encodeURIComponent(props.shop_id)}`
         );
         const survey = detail.survey;
@@ -41,6 +44,9 @@ export default function SurveyForm({
         setActivity(survey?.activity || '');
         setActivityOther(survey?.activity_other || '');
         setCondition(survey?.building_condition || '');
+        setFloor(survey?.floor || 'ground_floor');
+        setInstagramStatus(survey?.instagram_status || 'not_checked');
+        setPhone(survey?.phone || '');
       } catch {
         // Prefill is a convenience; the form stays usable without it.
       }
@@ -61,6 +67,9 @@ export default function SurveyForm({
         activity,
         activity_other: showOther ? activityOther.trim() : undefined,
         building_condition: condition,
+        floor,
+        instagram_status: instagramStatus,
+        phone: phone.trim() || undefined,
         // GPS is optional metadata only: it records where the surveyor happened
         // to be, never blocks or validates the save.
         survey_lat: gps.position?.lat ?? null,
@@ -160,6 +169,22 @@ export default function SurveyForm({
               </option>
             ))}
           </select>
+        </div>
+        <div>
+          <label className="label" htmlFor="survey-floor">موقعیت عمودی</label>
+          <select id="survey-floor" className="input" value={floor} onChange={(e) => setFloor(e.target.value)}>
+            {FLOORS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label" htmlFor="survey-instagram">Instagram</label>
+          <select id="survey-instagram" className="input" value={instagramStatus} onChange={(e) => setInstagramStatus(e.target.value)}>
+            {INSTAGRAM_STATUSES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label" htmlFor="survey-phone">تلفن (اختیاری)</label>
+          <input id="survey-phone" className="input" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </div>
       </div>
 

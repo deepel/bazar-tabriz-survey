@@ -14,8 +14,10 @@ import type {
   User
 } from '../types';
 import { formatDate, formatNumber } from '../utils/format';
+import { FLOORS, INSTAGRAM_STATUSES, SERVICE_TYPES } from '../config/constants';
 
 const EMPTY_FILTERS: AdminShopsFilters = {
+  record_type: '',
   shop_name: '',
   activity: '',
   activity_other: '',
@@ -23,7 +25,12 @@ const EMPTY_FILTERS: AdminShopsFilters = {
   surveyed: '',
   surveyor: '',
   date_from: '',
-  date_to: ''
+  date_to: '',
+  floor: '',
+  instagram_status: '',
+  service_type: '',
+  opening_time: '',
+  closing_time: ''
 };
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100];
@@ -41,6 +48,12 @@ interface ColumnDef {
  * service), without touching the rest of the page.
  */
 const COLUMNS: ColumnDef[] = [
+  {
+    key: 'record_type',
+    label: 'نوع رکورد',
+    sortable: false,
+    render: (r) => r.record_type === 'shops' ? 'مغازه اصلی' : r.record_type === 'shops-point' ? 'مکان تکمیلی (Point)' : r.record_type === 'services' ? 'خدمات' : 'در'
+  },
   {
     key: 'shop_name',
     label: 'نام مغازه',
@@ -64,7 +77,7 @@ const COLUMNS: ColumnDef[] = [
     label: 'وضعیت برداشت',
     sortable: true,
     render: (r) =>
-      r.surveyed ? (
+      r.surveyed === null ? '—' : r.surveyed ? (
         <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-700">
           برداشت شده
         </span>
@@ -73,6 +86,42 @@ const COLUMNS: ColumnDef[] = [
           برداشت نشده
         </span>
       )
+  },
+  {
+    key: 'floor',
+    label: 'موقعیت عمودی',
+    sortable: true,
+    render: (r) => FLOORS.find((x) => x.value === r.floor)?.label ?? '—'
+  },
+  {
+    key: 'instagram_status',
+    label: 'Instagram',
+    sortable: true,
+    render: (r) => INSTAGRAM_STATUSES.find((x) => x.value === r.instagram_status)?.label ?? '—'
+  },
+  {
+    key: 'phone',
+    label: 'تلفن',
+    sortable: true,
+    render: (r) => r.phone || '—'
+  },
+  {
+    key: 'service_type',
+    label: 'نوع خدمات',
+    sortable: true,
+    render: (r) => SERVICE_TYPES.find((x) => x.value === r.service_type)?.label ?? '—'
+  },
+  {
+    key: 'opening_time',
+    label: 'باز شدن',
+    sortable: true,
+    render: (r) => r.opening_time || '—'
+  },
+  {
+    key: 'closing_time',
+    label: 'بسته شدن',
+    sortable: true,
+    render: (r) => r.closing_time || '—'
   },
   {
     key: 'surveyor',
@@ -105,8 +154,19 @@ interface FilterField {
   options?: Array<{ value: string; label: string }>;
 }
 
-function filterFields(options: OptionsResponse | null, surveyors: User[]): FilterField[] {
+function filterFields(options: OptionsResponse | null, surveyors: User[], recordType: AdminShopsFilters['record_type']): FilterField[] {
+  const recordField: FilterField = { key: 'record_type', label: 'نوع رکورد', type: 'select', options: [{ value: 'shops', label: 'مغازه اصلی' }, { value: 'shops-point', label: 'مکان تکمیلی (Point)' }, { value: 'services', label: 'خدمات' }, { value: 'doors', label: 'در' }] };
+  const serviceField: FilterField = { key: 'service_type', label: 'نوع خدمات', type: 'select', options: SERVICE_TYPES.map((x) => ({ value: x.value, label: x.label })) };
+  const openingField: FilterField = { key: 'opening_time', label: 'ساعت باز شدن', type: 'text' };
+  const closingField: FilterField = { key: 'closing_time', label: 'ساعت بسته شدن', type: 'text' };
+  if (recordType === 'services') {
+    return [recordField, { key: 'shop_name', label: 'نام', type: 'text' }, serviceField];
+  }
+  if (recordType === 'doors') {
+    return [recordField, { key: 'shop_name', label: 'نام در', type: 'text' }, openingField, closingField];
+  }
   return [
+    recordField,
     { key: 'shop_name', label: 'نام مغازه', type: 'text' },
     {
       key: 'activity',
@@ -137,7 +197,9 @@ function filterFields(options: OptionsResponse | null, surveyors: User[]): Filte
     },
     { key: 'date_from', label: 'تاریخ برداشت از', type: 'date' },
     { key: 'date_to', label: 'تاریخ برداشت تا', type: 'date' },
-    { key: 'activity_other', label: 'سایر کاربری', type: 'text' }
+    { key: 'activity_other', label: 'سایر کاربری', type: 'text' },
+    { key: 'floor', label: 'موقعیت عمودی', type: 'select', options: FLOORS.map((x) => ({ value: x.value, label: x.label })) },
+    { key: 'instagram_status', label: 'Instagram', type: 'select', options: INSTAGRAM_STATUSES.map((x) => ({ value: x.value, label: x.label })) }
   ];
 }
 
@@ -285,7 +347,7 @@ export default function AdminShops() {
     }
   }
 
-  const fields = useMemo(() => filterFields(options, surveyors), [options, surveyors]);
+  const fields = useMemo(() => filterFields(options, surveyors, filters.record_type), [options, surveyors, filters.record_type]);
   const activeCount = countActive(filters, search);
   const total = data?.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
@@ -446,7 +508,7 @@ export default function AdminShops() {
                   </thead>
                   <tbody>
                     {data.rows.map((row) => (
-                      <tr key={row.shop_id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                      <tr key={row.record_id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                         {COLUMNS.map((col) => (
                           <td key={col.key} className="px-3 py-2.5">
                             {col.render(row)}

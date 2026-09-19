@@ -7,6 +7,12 @@ interface LayerControlProps {
   onToggle: (layerKey: string, visible: boolean) => void;
   baseMap?: 'osm' | 'satellite' | 'none';
   onBaseMapChange?: (mode: 'osm' | 'satellite' | 'none') => void;
+  pointVisible?: boolean;
+  onPointToggle?: (visible: boolean) => void;
+  serviceVisible?: boolean;
+  onServiceToggle?: (visible: boolean) => void;
+  doorVisible?: boolean;
+  onDoorToggle?: (visible: boolean) => void;
 }
 
 const MASK_KEY = 'bazar-area';
@@ -21,7 +27,13 @@ export default function LayerControl({
   visibility,
   onToggle,
   baseMap = 'osm',
-  onBaseMapChange
+  onBaseMapChange,
+  pointVisible = true,
+  onPointToggle,
+  serviceVisible = true,
+  onServiceToggle
+  ,doorVisible = true
+  ,onDoorToggle
 }: LayerControlProps) {
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -53,7 +65,7 @@ export default function LayerControl({
   }
 
   return (
-    <div className={`absolute right-3 top-3 z-[1000] ${open ? 'w-60' : 'w-11'}`}>
+    <div className={`absolute bottom-3 right-3 z-[1000] ${open ? 'w-60' : 'w-11'}`}>
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -64,7 +76,7 @@ export default function LayerControl({
         <span aria-hidden="true">{open ? '×' : '◈'}</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-12 w-60 space-y-2 rounded-2xl border border-[#ded8ce] bg-[#fffdfa]/95 p-2.5 shadow-[0_14px_36px_rgba(37,49,59,.18)] backdrop-blur">
+        <div className="absolute bottom-12 right-0 w-60 space-y-2 rounded-2xl border border-[#ded8ce] bg-[#fffdfa]/95 p-2.5 shadow-[0_14px_36px_rgba(37,49,59,.18)] backdrop-blur">
           <div className="px-2 pb-1 text-[11px] font-bold text-[#40515d]">نمایش نقشه</div>
           {onBaseMapChange && (
             <div className="grid grid-cols-3 gap-1 rounded-xl bg-[#f2eee8] p-1">
@@ -87,6 +99,39 @@ export default function LayerControl({
                 </button>
               ))}
             </div>
+          )}
+          {onPointToggle && (
+            <button
+              type="button"
+              onClick={() => onPointToggle(!pointVisible)}
+              className="flex w-full items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700"
+              aria-pressed={pointVisible}
+            >
+              <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-full border-2 border-teal-700 bg-teal-300" /> مکان‌های تکمیلی (Point)</span>
+              <span>{pointVisible ? 'روشن' : 'خاموش'}</span>
+            </button>
+          )}
+          {onServiceToggle && (
+            <button
+              type="button"
+              onClick={() => onServiceToggle(!serviceVisible)}
+              className="flex w-full items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700"
+              aria-pressed={serviceVisible}
+            >
+              <span className="flex items-center gap-2"><span className="flex h-3 w-3 items-center justify-center text-[10px] text-violet-700">◆</span> خدمات</span>
+              <span>{serviceVisible ? 'روشن' : 'خاموش'}</span>
+            </button>
+          )}
+          {onDoorToggle && (
+            <button
+              type="button"
+              onClick={() => onDoorToggle(!doorVisible)}
+              className="flex w-full items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700"
+              aria-pressed={doorVisible}
+            >
+              <span className="flex items-center gap-2"><span className="flex h-3 w-3 items-center justify-center rounded-full border-2 border-amber-700 bg-amber-100 text-[9px] font-bold text-amber-700">↕</span> درها</span>
+              <span>{doorVisible ? 'روشن' : 'خاموش'}</span>
+            </button>
           )}
           <div className="border-t border-[#eee8df] pt-1 text-[11px] font-bold text-[#40515d]">لایه‌های مرجع</div>
           {layers.map((layer) => {

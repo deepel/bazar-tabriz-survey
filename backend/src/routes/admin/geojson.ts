@@ -1,7 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import { config } from '../../config';
 import { requireAdmin } from '../../middleware/auth';
-import { buildGeoJson } from '../../services/export.service';
+import { buildGeoJson, buildPointShopsGeoJson } from '../../services/export.service';
+import { buildServicePointsGeoJson } from '../../services/service-point.service';
+import { buildDoorPointsGeoJson } from '../../services/door-point.service';
 import { applyImport, previewImport } from '../../services/import.service';
 import { AppError, sendFriendlyError } from '../../utils/errors';
 
@@ -71,4 +73,31 @@ export function registerAdminGeoJsonRoutes(app: FastifyInstance): void {
       return reply.send(geoJson);
     }
   );
+
+  app.get('/api/admin/point-shops/export', { preHandler: [requireAdmin] }, async (request, reply) => {
+    const geoJson = await buildPointShopsGeoJson();
+    const download = (request.query as { download?: string }).download === '1';
+    if (download) {
+      reply.header('Content-Disposition', `attachment; filename="bazar_tabriz_point_shops_${new Date().toISOString().slice(0, 10)}.geojson"`);
+    }
+    return reply.header('Content-Type', 'application/geo+json; charset=utf-8').send(geoJson);
+  });
+
+  app.get('/api/admin/service-points/export', { preHandler: [requireAdmin] }, async (request, reply) => {
+    const geoJson = await buildServicePointsGeoJson();
+    const download = (request.query as { download?: string }).download === '1';
+    if (download) {
+      reply.header('Content-Disposition', `attachment; filename="bazar_tabriz_service_points_${new Date().toISOString().slice(0, 10)}.geojson"`);
+    }
+    return reply.header('Content-Type', 'application/geo+json; charset=utf-8').send(geoJson);
+  });
+
+  app.get('/api/admin/door-points/export', { preHandler: [requireAdmin] }, async (request, reply) => {
+    const geoJson = await buildDoorPointsGeoJson();
+    const download = (request.query as { download?: string }).download === '1';
+    if (download) {
+      reply.header('Content-Disposition', `attachment; filename="bazar_tabriz_door_points_${new Date().toISOString().slice(0, 10)}.geojson"`);
+    }
+    return reply.header('Content-Type', 'application/geo+json; charset=utf-8').send(geoJson);
+  });
 }

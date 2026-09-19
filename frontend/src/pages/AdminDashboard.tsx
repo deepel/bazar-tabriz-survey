@@ -18,13 +18,19 @@ import type {
   ShopsResponse,
   Stats,
   SurveyorStatsResponse,
-  User
+  User,
+  PointShopsResponse,
+  ServicePointsResponse,
+  DoorPointsResponse
 } from '../types';
 import { formatDate, formatNumber } from '../utils/format';
 
 export default function AdminDashboard() {
   const auth = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
+  const [pointShopCount, setPointShopCount] = useState(0);
+  const [servicePointCount, setServicePointCount] = useState(0);
+  const [doorPointCount, setDoorPointCount] = useState(0);
   const [users, setUsers] = useState<User[]>([]);
   const [categoryStats, setCategoryStats] = useState<CategoryStatsResponse | null>(null);
   const [surveyorStats, setSurveyorStats] = useState<SurveyorStatsResponse | null>(null);
@@ -41,19 +47,28 @@ export default function AdminDashboard() {
         usersResult,
         githubResult,
         categoryResult,
-        surveyorResult
+        surveyorResult,
+        pointShopResult,
+        servicePointResult,
+        doorPointResult
       ] = await Promise.all([
         api.get<Stats>('/api/stats'),
         api.get<{ users: User[] }>('/api/admin/users'),
         api.get<GithubStatus>('/api/admin/github/status'),
         api.get<CategoryStatsResponse>('/api/admin/stats/categories'),
-        api.get<SurveyorStatsResponse>('/api/admin/stats/surveyors')
+        api.get<SurveyorStatsResponse>('/api/admin/stats/surveyors'),
+        api.get<{ total: number }>('/api/admin/stats/point-shops'),
+        api.get<{ total: number }>('/api/admin/stats/service-points'),
+        api.get<{ total: number }>('/api/admin/stats/door-points')
       ]);
       setStats(statsResult);
       setUsers(usersResult.users);
       setGithubStatus(githubResult);
       setCategoryStats(categoryResult);
       setSurveyorStats(surveyorResult);
+      setPointShopCount(pointShopResult.total);
+      setServicePointCount(servicePointResult.total);
+      setDoorPointCount(doorPointResult.total);
       setError(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'دریافت اطلاعات پنل ناموفق بود.');
@@ -91,6 +106,39 @@ export default function AdminDashboard() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function handlePointExport() {
+    setBusy(true); setMessage(null);
+    try {
+      const data = await api.get<PointShopsResponse>('/api/admin/point-shops/export');
+      downloadGeojson(data, `bazar_tabriz_point_shops_${new Date().toISOString().slice(0, 10)}.geojson`);
+      setMessage('خروجی مکان‌های تکمیلی دانلود شد.');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'دانلود خروجی مکان‌های تکمیلی ناموفق بود.');
+    } finally { setBusy(false); }
+  }
+
+  async function handleServiceExport() {
+    setBusy(true); setMessage(null);
+    try {
+      const data = await api.get<ServicePointsResponse>('/api/admin/service-points/export');
+      downloadGeojson(data, `bazar_tabriz_service_points_${new Date().toISOString().slice(0, 10)}.geojson`);
+      setMessage('خروجی خدمات دانلود شد.');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'دانلود خروجی خدمات ناموفق بود.');
+    } finally { setBusy(false); }
+  }
+
+  async function handleDoorExport() {
+    setBusy(true); setMessage(null);
+    try {
+      const data = await api.get<DoorPointsResponse>('/api/admin/door-points/export');
+      downloadGeojson(data, `bazar_tabriz_door_points_${new Date().toISOString().slice(0, 10)}.geojson`);
+      setMessage('خروجی درهای بازار دانلود شد.');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'دانلود خروجی درها ناموفق بود.');
+    } finally { setBusy(false); }
   }
 
   async function handleCreateUser(e: React.FormEvent) {
@@ -163,7 +211,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        <StatsCards stats={stats} />
+        <StatsCards stats={stats} pointShops={pointShopCount} servicePoints={servicePointCount} doorPoints={doorPointCount} />
 
         <SystemLogPanel />
 
@@ -208,6 +256,15 @@ export default function AdminDashboard() {
               </Link>
               <button className="btn-ghost" onClick={handleExport} disabled={busy}>
                 خروجی GeoJSON
+              </button>
+              <button className="btn-ghost" onClick={handlePointExport} disabled={busy}>
+                خروجی Point GeoJSON
+              </button>
+              <button className="btn-ghost" onClick={handleServiceExport} disabled={busy}>
+                خروجی خدمات GeoJSON
+              </button>
+              <button className="btn-ghost" onClick={handleDoorExport} disabled={busy}>
+                خروجی درها GeoJSON
               </button>
               <button className="btn-ghost" onClick={handleGitHubSync} disabled={busy}>
                 همگام‌سازی با GitHub
@@ -332,19 +389,22 @@ export default function AdminDashboard() {
               پیشرفت: {formatNumber(stats.progress)}٪
             </span>
           </div>
-          <StatTable stats={stats} />
+            <StatTable stats={stats} pointShops={pointShopCount} servicePoints={servicePointCount} doorPoints={doorPointCount} />
         </section>
       </main>
     </div>
   );
 }
 
-function StatTable({ stats }: { stats: Stats }) {
+function StatTable({ stats, pointShops, servicePoints, doorPoints }: { stats: Stats; pointShops: number; servicePoints: number; doorPoints: number }) {
   const rows = [
     { label: 'کل مغازه‌ها', value: formatNumber(stats.total) },
     { label: 'بررسی شده', value: formatNumber(stats.surveyed) },
     { label: 'باقی‌مانده', value: formatNumber(stats.unsurveyed) },
-    { label: 'پیشرفت', value: `${formatNumber(stats.progress)}٪` }
+    { label: 'پیشرفت', value: `${formatNumber(stats.progress)}٪` },
+    { label: 'مکان‌های تکمیلی خارج از همکف', value: formatNumber(pointShops) },
+    { label: 'خدمات', value: formatNumber(servicePoints) },
+    { label: 'درهای بازار', value: formatNumber(doorPoints) }
   ];
   return (
     <div className="flex flex-wrap gap-6 text-sm">

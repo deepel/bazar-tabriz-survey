@@ -4,6 +4,21 @@ import { pool } from '../../db';
 import { requireAdmin } from '../../middleware/auth';
 
 export function registerAdminStatsRoutes(app: FastifyInstance): void {
+  app.get('/api/admin/stats/point-shops', { preHandler: [requireAdmin] }, async () => {
+    const result = await pool.query('SELECT COUNT(*)::int AS total FROM point_shops');
+    return { total: Number(result.rows[0].total) };
+  });
+
+  app.get('/api/admin/stats/service-points', { preHandler: [requireAdmin] }, async () => {
+    const result = await pool.query('SELECT COUNT(*)::int AS total FROM service_points');
+    return { total: Number(result.rows[0].total) };
+  });
+
+  app.get('/api/admin/stats/door-points', { preHandler: [requireAdmin] }, async () => {
+    const result = await pool.query('SELECT COUNT(*)::int AS total FROM door_points');
+    return { total: Number(result.rows[0].total) };
+  });
+
   app.get(
     '/api/admin/stats/categories',
     { preHandler: [requireAdmin] },

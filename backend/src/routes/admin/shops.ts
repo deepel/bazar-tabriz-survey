@@ -20,6 +20,12 @@ interface ShopsQuery {
   surveyor?: string;
   date_from?: string;
   date_to?: string;
+  record_type?: string;
+  floor?: string;
+  instagram_status?: string;
+  service_type?: string;
+  opening_time?: string;
+  closing_time?: string;
   sort?: string;
   order?: string;
   page?: string;
@@ -38,7 +44,13 @@ function parseShopsQuery(query: ShopsQuery) {
     surveyed: query.surveyed === 'yes' || query.surveyed === 'no' ? query.surveyed : undefined,
     surveyor: query.surveyor?.trim() || undefined,
     date_from: query.date_from || undefined,
-    date_to: query.date_to || undefined
+    date_to: query.date_to || undefined,
+    record_type: query.record_type === 'shops' || query.record_type === 'shops-point' || query.record_type === 'services' || query.record_type === 'doors' ? query.record_type : undefined,
+    floor: query.floor || undefined,
+    instagram_status: query.instagram_status || undefined,
+    service_type: query.service_type || undefined
+    ,opening_time: query.opening_time || undefined
+    ,closing_time: query.closing_time || undefined
   };
 
   for (const field of ['date_from', 'date_to'] as const) {

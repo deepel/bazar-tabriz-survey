@@ -22,6 +22,30 @@ export const FALLBACK_BUILDING_CONDITIONS = [
   'سایر'
 ];
 
+export const FLOORS = [
+  { value: 'ground_floor', label: 'همکف' },
+  { value: 'basement', label: 'زیرزمین' },
+  { value: 'floor_1', label: 'طبقه ۱' },
+  { value: 'floor_2', label: 'طبقه ۲' }
+] as const;
+
+export const INSTAGRAM_STATUSES = [
+  { value: 'has', label: 'دارد' },
+  { value: 'does_not_have', label: 'ندارد' },
+  { value: 'not_checked', label: 'بررسی نشده' }
+] as const;
+
+export const SERVICE_TYPES = [
+  { value: 'toilet', label: 'سرویس بهداشتی' },
+  { value: 'prayer_room', label: 'نمازخانه' },
+  { value: 'mosque', label: 'مسجد' }
+] as const;
+
+// Points stay hidden at the broad bazaar view and are fetched only when a
+// surveyor is close enough for their markers to be useful. Keep this in one
+// place so it can be tuned after real mobile testing.
+export const POINTS_MIN_ZOOM = 18;
+
 export const OTHER = 'سایر';
 
 export const ASSIGNMENT_COLOR_OPTIONS = [

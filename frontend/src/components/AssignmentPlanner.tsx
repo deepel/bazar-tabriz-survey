@@ -69,7 +69,7 @@ export default function AssignmentPlanner({ currentUser, onPreviewChange, onConf
 
   return (
     <>
-      <div className="absolute right-3 top-28 z-[1100]">
+      <div className="absolute bottom-20 right-3 z-[1100]">
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}

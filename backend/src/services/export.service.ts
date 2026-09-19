@@ -8,6 +8,9 @@ interface ExportRow {
   activity: string | null;
   activity_other: string | null;
   building_condition: string | null;
+  floor: string | null;
+  instagram_status: string | null;
+  phone: string | null;
   username: string | null;
   surveyed_at: Date | null;
   survey_lat: number | null;
@@ -29,6 +32,9 @@ export async function buildGeoJson(): Promise<Record<string, unknown>> {
        sv.activity,
        sv.activity_other,
        sv.building_condition,
+       sv.floor,
+       sv.instagram_status,
+       sv.phone,
        sv.surveyed_at,
        sv.survey_lat,
        sv.survey_lon,
@@ -46,6 +52,9 @@ export async function buildGeoJson(): Promise<Record<string, unknown>> {
     properties.activity = row.activity ?? null;
     properties.activity_other = row.activity_other ?? null;
     properties.building_condition = row.building_condition ?? null;
+    properties.floor = row.floor ?? null;
+    properties.instagram_status = row.instagram_status ?? null;
+    properties.phone = row.phone ?? null;
     properties.surveyed = row.surveyed_at !== null;
     properties.surveyor_id = row.username ?? null;
     properties.surveyed_at = row.surveyed_at ? row.surveyed_at.toISOString() : null;
@@ -64,5 +73,35 @@ export async function buildGeoJson(): Promise<Record<string, unknown>> {
     name: 'bazar_tabriz_survey',
     crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::4326' } },
     features
+  };
+}
+
+export async function buildPointShopsGeoJson(): Promise<Record<string, unknown>> {
+  const result = await pool.query(
+    `SELECT p.*, u.username AS created_by_username
+     FROM point_shops p LEFT JOIN users u ON u.id = p.created_by
+     ORDER BY p.point_shop_id`
+  );
+  return {
+    type: 'FeatureCollection',
+    name: 'bazar_tabriz_point_shops',
+    features: result.rows.map((row) => ({
+      type: 'Feature',
+      geometry: row.geometry,
+      properties: {
+        point_shop_id: row.point_shop_id,
+        shop_name: row.shop_name,
+        activity: row.activity,
+        activity_other: row.activity_other,
+        building_condition: row.building_condition,
+        floor: row.floor,
+        instagram_status: row.instagram_status,
+        phone: row.phone,
+        notes: row.notes,
+        created_by: row.created_by_username,
+        created_at: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
+        updated_at: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at
+      }
+    }))
   };
 }

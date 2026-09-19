@@ -41,7 +41,7 @@ export async function loginCookie(
 export function resetDb(): Promise<QueryResult> {
   return pool.query(
     `TRUNCATE assignment_shops, assignment_members, assignment_previews, assignments,
-               shops, surveys, messages, app_meta RESTART IDENTITY CASCADE;
+               point_shops, service_points, door_points, shops, surveys, messages, app_meta RESTART IDENTITY CASCADE;
      DELETE FROM users WHERE username NOT IN ('admin', 'jafari', 'moradi', 'kamali');`
   );
 }
@@ -111,17 +111,23 @@ export async function insertSurveyFor(
     surveyedAt?: Date;
     buildingCondition?: string;
     shopName?: string;
+    floor?: string;
+    instagramStatus?: string;
+    phone?: string | null;
   } = {}
 ): Promise<void> {
   await pool.query(
-    `INSERT INTO surveys (shop_id, shop_name, activity, activity_other, building_condition, surveyor_id, surveyed_at)
-     VALUES ($1, $2, $3, $4, $5, (SELECT id FROM users WHERE username = $6), $7)`,
+    `INSERT INTO surveys (shop_id, shop_name, activity, activity_other, building_condition, floor, instagram_status, phone, surveyor_id, surveyed_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, (SELECT id FROM users WHERE username = $9), $10)`,
     [
       shopId,
       options.shopName ?? 'مغازه ' + shopId,
       activity,
       activityOther,
       options.buildingCondition ?? 'سالم',
+      options.floor ?? 'ground_floor',
+      options.instagramStatus ?? 'not_checked',
+      options.phone ?? null,
       surveyorUsername,
       options.surveyedAt ?? new Date()
     ]

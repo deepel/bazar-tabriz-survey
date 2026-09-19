@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { ACTIVITIES, BUILDING_CONDITIONS } from '../config';
+import { ACTIVITIES, BUILDING_CONDITIONS, FLOORS, INSTAGRAM_STATUSES } from '../config';
 import { authenticate } from '../middleware/auth';
 import { logger } from '../logger';
 import { listSurveys, saveSurvey } from '../services/survey.service';
@@ -11,6 +11,9 @@ interface SurveyBody {
   activity?: string;
   activity_other?: string;
   building_condition?: string;
+  floor?: string;
+  instagram_status?: string;
+  phone?: string;
   survey_lat?: number;
   survey_lon?: number;
 }
@@ -31,6 +34,9 @@ export function registerSurveyRoutes(app: FastifyInstance): void {
             activity: { type: 'string' },
             activity_other: { type: 'string' },
             building_condition: { type: 'string' },
+            floor: { type: 'string' },
+            instagram_status: { type: 'string' },
+            phone: { type: 'string' },
             survey_lat: { type: 'number' },
             survey_lon: { type: 'number' }
           }
@@ -53,6 +59,14 @@ export function registerSurveyRoutes(app: FastifyInstance): void {
         logger.warn('survey.failed', { shopId: body.shop_id, userId: request.user!.id, reason: 'invalid_condition' });
         throw new AppError(400, 'invalid_condition', 'وضعیت ساختمان انتخاب‌شده معتبر نیست.');
       }
+      const floor = body.floor ?? 'ground_floor';
+      const instagramStatus = body.instagram_status ?? 'not_checked';
+      if (!FLOORS.includes(floor as (typeof FLOORS)[number])) {
+        throw new AppError(400, 'invalid_floor', 'موقعیت عمودی انتخاب‌شده معتبر نیست.');
+      }
+      if (!INSTAGRAM_STATUSES.includes(instagramStatus as (typeof INSTAGRAM_STATUSES)[number])) {
+        throw new AppError(400, 'invalid_instagram_status', 'وضعیت اینستاگرام انتخاب‌شده معتبر نیست.');
+      }
       const lat = body.survey_lat;
       const lon = body.survey_lon;
 
@@ -65,6 +79,9 @@ export function registerSurveyRoutes(app: FastifyInstance): void {
           activity: body.activity ?? null,
           activity_other: body.activity_other?.trim() || null,
           building_condition: body.building_condition ?? null,
+          floor: floor as (typeof FLOORS)[number],
+          instagram_status: instagramStatus as (typeof INSTAGRAM_STATUSES)[number],
+          phone: body.phone?.trim() || null,
           survey_lat: lat ?? null,
           survey_lon: lon ?? null
         });
