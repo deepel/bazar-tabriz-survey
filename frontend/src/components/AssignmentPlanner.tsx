@@ -4,16 +4,21 @@ import type { AssignmentPreview, AssignmentSurveyor, User } from '../types';
 
 interface AssignmentPlannerProps {
   currentUser: User | null;
+  /**
+   * The single authoritative temporary preview, owned by the map page
+   * (SurveyMap). The planner never keeps its own copy, so the map and the
+   * panel can never disagree about which preview exists.
+   */
+  preview: AssignmentPreview | null;
   onPreviewChange: (preview: AssignmentPreview | null) => void;
   onConfirmed: () => void;
 }
 
-export default function AssignmentPlanner({ currentUser, onPreviewChange, onConfirmed }: AssignmentPlannerProps) {
+export default function AssignmentPlanner({ currentUser, preview, onPreviewChange, onConfirmed }: AssignmentPlannerProps) {
   const [open, setOpen] = useState(false);
   const [surveyors, setSurveyors] = useState<AssignmentSurveyor[]>([]);
   const [memberIds, setMemberIds] = useState<number[]>([]);
   const [requestedCount, setRequestedCount] = useState('100');
-  const [preview, setPreview] = useState<AssignmentPreview | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,18 +38,30 @@ export default function AssignmentPlanner({ currentUser, onPreviewChange, onConf
     setMemberIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   }
 
+  function closePlanner() {
+    // Closing the panel also discards the temporary unconfirmed preview, so a
+    // reopened planner is always clean. Confirmed assignments are unaffected.
+    if (preview) onPreviewChange(null);
+    setOpen(false);
+  }
+
   async function roll() {
+    const previousPreviewId = preview?.previewId;
     setBusy(true);
     setError(null);
+    // Roll Again: drop the old temporary preview from the map BEFORE sending
+    // the new request, so at most one preview can ever be rendered at a time.
+    // The server also invalidates that preview via replace_preview_id.
+    if (previousPreviewId) onPreviewChange(null);
     try {
       const result = await api.post<AssignmentPreview>('/api/assignments/preview', {
         requested_count: Number(requestedCount),
         member_ids: memberIds,
-        replace_preview_id: preview?.previewId
+        replace_preview_id: previousPreviewId
       });
-      setPreview(result);
       onPreviewChange(result);
     } catch (err) {
+      // The old preview stays removed; stale geometry is never restored.
       setError(err instanceof ApiError ? err.message : 'ساخت پیش‌نمایش assignment ناموفق بود.');
     } finally {
       setBusy(false);
@@ -57,7 +74,8 @@ export default function AssignmentPlanner({ currentUser, onPreviewChange, onConf
     setError(null);
     try {
       await api.post('/api/assignments/confirm', { preview_id: preview.previewId });
-      setPreview(null);
+      // Only the temporary preview is removed here; the confirmed assignment
+      // lives in the database and stays visible through active rendering.
       onPreviewChange(null);
       onConfirmed();
     } catch (err) {
@@ -72,7 +90,13 @@ export default function AssignmentPlanner({ currentUser, onPreviewChange, onConf
       <div className="absolute bottom-20 right-3 z-[1100]">
         <button
           type="button"
-          onClick={() => setOpen((value) => !value)}
+          onClick={() => {
+            if (open) {
+              closePlanner();
+            } else {
+              setOpen(true);
+            }
+          }}
           className="flex h-11 w-11 items-center justify-center rounded-full border border-[#ded8ce] bg-[#fffdfa]/95 text-lg text-[#40515d] shadow-[0_8px_24px_rgba(37,49,59,.18)] backdrop-blur"
           aria-label={open ? 'بستن ساخت assignment' : 'باز کردن ساخت assignment'}
           title="ساخت محدوده برداشت"
@@ -82,13 +106,21 @@ export default function AssignmentPlanner({ currentUser, onPreviewChange, onConf
       </div>
       {open && (
         <div className="fixed inset-x-0 bottom-0 z-[1100] max-h-[72vh] overflow-y-auto border-t border-[#ded8ce] bg-[#fffdfa]/98 p-3 shadow-[0_-14px_36px_rgba(37,49,59,.18)] backdrop-blur">
-          <div className="mx-auto w-full max-w-xl">
-            <div className="mb-2 flex items-center justify-between">
-              <div>
-                <div className="text-sm font-bold text-[#40515d]">محدوده برداشت</div>
-                <div className="text-[10px] text-slate-400">انتخاب خوشه‌ای و پیوسته از مغازه‌های باقی‌مانده</div>
-              </div>
+          <div className="sticky top-0 z-10 -mx-3 -mt-3 mb-2 flex items-center justify-between gap-2 border-b border-[#efe9df] bg-[#fffdfa] px-3 py-2">
+            <div className="min-w-0">
+              <div className="text-sm font-bold text-[#40515d]">محدوده برداشت</div>
+              <div className="text-[10px] text-slate-400">انتخاب خوشه‌ای و پیوسته از مغازه‌های باقی‌مانده</div>
             </div>
+            <button
+              type="button"
+              onClick={closePlanner}
+              className="shrink-0 rounded-xl border border-[#ded8ce] bg-white px-3 py-2 text-xs font-semibold text-[#40515d] shadow-sm hover:bg-slate-50"
+              aria-label="بستن پنل محدوده برداشت"
+            >
+              بستن
+            </button>
+          </div>
+          <div className="mx-auto w-full max-w-xl">
 
             <label className="mb-2 block text-xs text-slate-600">
               تعداد درخواستی

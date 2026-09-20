@@ -453,6 +453,7 @@ export default function SurveyMap() {
         <AssignmentLegend members={legendMembers} />
         <AssignmentPlanner
           currentUser={auth.user}
+          preview={assignmentPreview}
           onPreviewChange={setAssignmentPreview}
           onConfirmed={() => {
             void fetchActiveAssignments();
