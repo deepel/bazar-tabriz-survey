@@ -13,7 +13,11 @@
     "test:watch": "vitest",
     "db:migrate": "tsx database/migrate.ts",
     "db:seed": "tsx database/seed.ts",
-    "db:reset": "tsx database/reset.ts"
+    "db:reset": "tsx database/reset.ts",
+    "db:cleanup": "tsx database/production-cleanup.ts",
+    "db:cleanup:apply": "tsx database/production-cleanup.ts --apply",
+    "db:bootstrap-user": "tsx database/bootstrap-user.ts",
+    "db:bootstrap-admin": "tsx database/bootstrap-user.ts --role admin"
   },
   "dependencies": {
     "@fastify/cookie": "^9.4.0",

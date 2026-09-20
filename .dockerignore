@@ -1,0 +1,39 @@
+# Production images must NOT contain development/test material.
+# Context is the repository root (npm workspaces require the lockfile).
+
+# VCS / local
+.git
+.gitignore
+LICENSE
+
+# Secrets and environment (real values never enter an image)
+.env
+.env.production
+.env.production.*
+.env.local
+
+# Dependencies and build output (installed/built inside the image)
+node_modules
+backend/node_modules
+frontend/node_modules
+dist
+coverage
+.vite
+*.log
+
+# Test fixtures and dev seed data — required only for CI, not the image
+backend/src/tests
+backend/database/seed-data
+
+# Dev-only database tooling (seed/reset create development data; production
+# only ever uses the migration mechanism, never these)
+backend/database/seed.ts
+backend/database/reset.ts
+
+# Runtime caches regenerated from the DB-configured GIS source URLs
+backend/gis-cache
+pgdata
+
+# Temporary inspection/scratch files
+inspect-db*.js
+*.tgz
