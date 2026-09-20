@@ -106,3 +106,15 @@ export const COLORS = {
     fillColor: '#f59e0b'
   }
 };
+
+// Import-review palette for the GeoJSON matching report. Deliberately separate
+// from COLORS (survey red/green semantics) so the two never collide on the
+// same screen: gray = unchanged existing shop, amber = geometry changed,
+// blue = brand-new shop, purple = needs human review, muted orange = invalid.
+export const IMPORT_COLORS = {
+  existing: { color: '#475569', fill: '#94a3b8' },
+  geometryChanged: { color: '#b45309', fill: '#f59e0b' },
+  new: { color: '#1d4ed8', fill: '#3b82f6' },
+  review: { color: '#6b21a8', fill: '#a855f7' },
+  invalid: { color: '#9a3412', fill: '#fb923c' }
+} as const;

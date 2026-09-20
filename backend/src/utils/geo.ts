@@ -72,6 +72,32 @@ export function toWgs84Geometry(
 }
 
 /**
+ * Converts a geometry in EPSG:4326 (lon/lat) to the target projected CRS
+ * (e.g. EPSG:32638, UTM zone 38N, meters). The reverse of `toWgs84Geometry`.
+ * Used by the geometry-matching engine so all metrics (distance/area/overlap)
+ * are computed in projected meters, which is scale-correct near the bazaar.
+ */
+export function toProjectedGeometry(
+  geometry: { type: string; coordinates: unknown },
+  targetEpsg: number
+): { type: string; coordinates: unknown } {
+  if (!targetEpsg || targetEpsg === 4326) return geometry;
+  const to = `EPSG:${targetEpsg}`;
+  if (!proj4.defs(to)) {
+    throw new Error(`CRS "${to}" is not supported`);
+  }
+  const convert = (coords: unknown): unknown => {
+    if (Array.isArray(coords) && coords.length >= 2 && typeof coords[0] === 'number') {
+      const [x, y] = proj4('EPSG:4326', to, [coords[0], coords[1]]);
+      return [x, y];
+    }
+    if (Array.isArray(coords)) return coords.map(convert);
+    return coords;
+  };
+  return { type: geometry.type, coordinates: convert(geometry.coordinates) };
+}
+
+/**
  * Deterministic SHA-256 fingerprint of a geometry, computed over a
  * canonical (key-sorted) JSON serialization. Two geometries that only differ
  * in JSON key order or irrelevant whitespace produce the same fingerprint.

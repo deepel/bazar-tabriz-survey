@@ -4,6 +4,7 @@ import { config } from '../config';
 import { pool, withTransaction } from '../db';
 import { logger } from '../logger';
 import { AppError } from '../utils/errors';
+import type { BBox, GeometryLike, LatLng } from '../utils/geo';
 import {
   analyzeFeatures,
   analyzeGeoJsonContent,
@@ -11,6 +12,16 @@ import {
   makeShopId,
   type ImportAnalysis
 } from './geojson.service';
+
+/** The subset of an analyzed feature the shops upsert actually writes. */
+export interface StorableShop {
+  fingerprint: string;
+  handle: string | null;
+  properties: Record<string, unknown>;
+  geometryWgs84: GeometryLike;
+  centroid: LatLng;
+  bbox: BBox;
+}
 
 const PREVIEW_TTL_MS = 60 * 60 * 1000;
 const storedPreviews = new Map<string, { filename: string; content: string; createdAt: number }>();
@@ -99,7 +110,7 @@ export async function applyImport(previewId: string, options: ApplyOptions = {})
         } else {
           shopId = item.targetShopId!;
         }
-        await upsertShop(client, item, shopId, stored.filename);
+        await upsertShopRecord(client, item, shopId, stored.filename);
       }
 
       await client.query(
@@ -135,9 +146,9 @@ export async function applyImport(previewId: string, options: ApplyOptions = {})
   }
 }
 
-function upsertShop(
+export function upsertShopRecord(
   client: PoolClient,
-  item: ImportAnalysis['features'][number],
+  item: StorableShop | ImportAnalysis['features'][number],
   shopId: string,
   sourceFile: string
 ) {

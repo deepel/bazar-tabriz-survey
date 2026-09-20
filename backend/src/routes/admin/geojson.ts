@@ -5,6 +5,12 @@ import { buildGeoJson, buildPointShopsGeoJson } from '../../services/export.serv
 import { buildServicePointsGeoJson } from '../../services/service-point.service';
 import { buildDoorPointsGeoJson } from '../../services/door-point.service';
 import { applyImport, previewImport } from '../../services/import.service';
+import {
+  applyReviewedImport,
+  resolveReview,
+  reviewImport,
+  type ImportResolution
+} from '../../services/import-review.service';
 import { AppError, sendFriendlyError } from '../../utils/errors';
 
 interface ImportBody {
@@ -15,6 +21,12 @@ interface ImportBody {
 interface ApplyBody {
   previewId?: string;
   failAfterInsertCount?: number;
+}
+
+interface ResolveBody {
+  previewId?: string;
+  newIndex?: number;
+  resolution?: ImportResolution;
 }
 
 export function registerAdminGeoJsonRoutes(app: FastifyInstance): void {
@@ -47,6 +59,64 @@ export function registerAdminGeoJsonRoutes(app: FastifyInstance): void {
           throw new AppError(400, 'missing_preview_id', 'شناسه پیش‌نمایش ارسال نشده است.');
         }
         const result = await applyImport(previewId, {
+          failAfterInsertCount: request.body?.failAfterInsertCount
+        });
+        return reply.send({ ok: true, ...result });
+      } catch (err) {
+        sendFriendlyError(reply, err);
+        return reply;
+      }
+    }
+  );
+
+  app.post<{ Body: ImportBody }>(
+    '/api/admin/geojson/import/review',
+    { preHandler: [requireAdmin] },
+    async (request, reply) => {
+      try {
+        const filename = request.body?.filename || 'upload.geojson';
+        const content = request.body?.content || '';
+        if (!content.trim()) {
+          throw new AppError(400, 'empty_geojson', 'فایل GeoJSON خالی است.');
+        }
+        const preview = await reviewImport(filename, content);
+        return reply.send(preview);
+      } catch (err) {
+        sendFriendlyError(reply, err);
+        return reply;
+      }
+    }
+  );
+
+  app.post<{ Body: ResolveBody }>(
+    '/api/admin/geojson/import/review/resolve',
+    { preHandler: [requireAdmin] },
+    async (request, reply) => {
+      try {
+        const previewId = request.body?.previewId;
+        const newIndex = request.body?.newIndex;
+        if (!previewId || newIndex === undefined) {
+          throw new AppError(400, 'missing_review_fields', 'اطلاعات بررسی ناقص ارسال شده است.');
+        }
+        const result = await resolveReview(previewId, Number(newIndex), request.body?.resolution);
+        return reply.send({ ok: true, previewId, ...result });
+      } catch (err) {
+        sendFriendlyError(reply, err);
+        return reply;
+      }
+    }
+  );
+
+  app.post<{ Body: ApplyBody }>(
+    '/api/admin/geojson/import/review/apply',
+    { preHandler: [requireAdmin] },
+    async (request, reply) => {
+      try {
+        const previewId = request.body?.previewId;
+        if (!previewId) {
+          throw new AppError(400, 'missing_preview_id', 'شناسه پیش‌نمایش ارسال نشده است.');
+        }
+        const result = await applyReviewedImport(previewId, {
           failAfterInsertCount: request.body?.failAfterInsertCount
         });
         return reply.send({ ok: true, ...result });

@@ -5,6 +5,7 @@ import {
   geometryCentroid,
   geometryFingerprint,
   isSupportedGeometry,
+  toProjectedGeometry,
   toWgs84Geometry
 } from '../utils/geo';
 
@@ -53,6 +54,24 @@ describe('geo utils', () => {
     expect(lon).toBeLessThan(46.4);
     expect(lat).toBeGreaterThan(38.0);
     expect(lat).toBeLessThan(38.2);
+  });
+
+  it('round-trips WGS84 through a projected CRS and back (toProjectedGeometry)', () => {
+    const projected = toProjectedGeometry(square, 32638);
+    const [x, y] = (projected.coordinates as number[][][])[0][0];
+    // Near Tabriz in UTM 38N: x ~ 613k, y ~ 4 215k (meters).
+    expect(x).toBeGreaterThan(600000);
+    expect(x).toBeLessThan(630000);
+    expect(y).toBeGreaterThan(4000000);
+    expect(y).toBeLessThan(4400000);
+    const back = toWgs84Geometry(projected as never, 32638);
+    const [lon, lat] = (back.coordinates as number[][][])[0][0];
+    expect(lon).toBeCloseTo(46.29, 6);
+    expect(lat).toBeCloseTo(38.07, 6);
+  });
+
+  it('throws when asked to project into an unknown CRS', () => {
+    expect(() => toProjectedGeometry(square, 99999)).toThrow(/not supported/);
   });
 
   it('computes the centroid within the geometry bounds', () => {
