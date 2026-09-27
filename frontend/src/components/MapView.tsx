@@ -1,6 +1,6 @@
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import type { DoorPointFeature, DoorPointsResponse, GeoJsonFeature, GisLayer, GpsState, PointShopFeature, PointShopsResponse, ServicePointFeature, ServicePointsResponse, ShopsResponse } from '../types';
 import {
   MAP,
@@ -115,18 +115,40 @@ export default function MapView({
           onConfirm={(coordinates) => onPlacementConfirmed?.(coordinates)}
           onCancel={() => onPlacementCancel?.()}
         />
+        <LocationButton gps={gps} />
       </MapContainer>
-      <button
-        type="button"
-        onClick={gps.locate}
-        className="absolute bottom-20 left-3 z-50 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm shadow-md sm:bottom-5"
-        aria-label="دریافت موقعیت فعلی"
-        title="موقعیت فعلی"
-      >
-        📍
-      </button>
       {children}
     </div>
+  );
+}
+
+export function LocationButton({ gps }: { gps: GpsState & { locate: () => void } }) {
+  const map = useMap();
+  const pendingRecenterRef = useRef(false);
+
+  useEffect(() => {
+    if (!pendingRecenterRef.current || !gps.position) return;
+    pendingRecenterRef.current = false;
+    map.panTo([gps.position.lat, gps.position.lon]);
+  }, [map, gps.position]);
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (gps.position) {
+          map.panTo([gps.position.lat, gps.position.lon]);
+          return;
+        }
+        pendingRecenterRef.current = true;
+        gps.locate();
+      }}
+      className="absolute bottom-20 left-3 z-[1000] rounded-full border border-slate-300 bg-white px-3 py-2 text-sm shadow-md sm:bottom-5"
+      aria-label="دریافت موقعیت فعلی"
+      title="موقعیت فعلی"
+    >
+      📍
+    </button>
   );
 }
 

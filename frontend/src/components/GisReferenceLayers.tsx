@@ -59,36 +59,42 @@ function ReferenceLayer({ layer }: { layer: GisLayer }) {
   const minZoom = layer.min_zoom ?? 0;
   const [data, setData] = useState<GeoJSON.FeatureCollection | null>(null);
   const requestRef = useRef<AbortController | null>(null);
+  const requestSeqRef = useRef(0);
+  const lastRequestRef = useRef<{ bbox: string; zoom: number } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     let timer: number | undefined;
     const load = async () => {
-      requestRef.current?.abort();
-      const controller = new AbortController();
-      requestRef.current = controller;
       const bounds = map.getBounds();
       const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()].join(',');
       const zoom = map.getZoom();
       if (zoom < minZoom) {
+        lastRequestRef.current = null;
         setData(null);
         return;
       }
+      if (lastRequestRef.current?.bbox === bbox && lastRequestRef.current?.zoom === zoom) return;
+      lastRequestRef.current = { bbox, zoom };
+      requestRef.current?.abort();
+      const controller = new AbortController();
+      requestRef.current = controller;
+      const signal = controller.signal;
+      const seq = ++requestSeqRef.current;
       try {
         const collection = await api.get<GeoJSON.FeatureCollection>(
           `/api/gis-layers/${encodeURIComponent(layer.layer_key)}/data?bbox=${bbox}&zoom=${zoom}`,
-          { signal: controller.signal }
+          { signal }
         );
-        if (!cancelled) setData(collection);
+        if (!cancelled && seq === requestSeqRef.current) setData(collection);
       } catch {
-        if (!cancelled) setData(null);
+        if (!cancelled && seq === requestSeqRef.current && !signal.aborted) setData(null);
       }
     };
     const schedule = () => {
       if (timer !== undefined) window.clearTimeout(timer);
       timer = window.setTimeout(() => void load(), 120);
     };
-    setData(null);
     void load();
     map.on('moveend zoomend', schedule);
     return () => {

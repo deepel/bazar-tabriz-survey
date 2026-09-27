@@ -14,4 +14,26 @@ describe('map point visibility', () => {
     expect(isMeaningfulViewportChange(base, { minLon: 46.2801, minLat: 38.0601, maxLon: 46.3001, maxLat: 38.0801 })).toBe(false);
     expect(isMeaningfulViewportChange(base, { minLon: 46.285, minLat: 38.06, maxLon: 46.305, maxLat: 38.08 })).toBe(true);
   });
+
+  it('ignores GPS-level jitter but reloads when the center moves far enough', () => {
+    const base = { minLon: 46.29, minLat: 38.07, maxLon: 46.31, maxLat: 38.09 };
+    const latEps = 0.0001; // ~11m at Tabriz latitude
+    const lonEps = 0.0002; // ~17m
+    expect(
+      isMeaningfulViewportChange(base, {
+        minLon: 46.29 + lonEps,
+        minLat: 38.07 + latEps,
+        maxLon: 46.31 + lonEps,
+        maxLat: 38.09 + latEps
+      })
+    ).toBe(false);
+    expect(
+      isMeaningfulViewportChange(base, {
+        minLon: 46.294,
+        minLat: 38.07,
+        maxLon: 46.314,
+        maxLat: 38.09
+      })
+    ).toBe(true);
+  });
 });

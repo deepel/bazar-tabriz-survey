@@ -15,12 +15,29 @@ export default function PointShopLayer({ points, onPointSelected }: PointShopLay
   clickRef.current = onPointSelected;
 
   useEffect(() => {
-    if (layerRef.current) {
-      map.removeLayer(layerRef.current);
-      layerRef.current = null;
+    return () => {
+      if (layerRef.current) {
+        map.removeLayer(layerRef.current);
+        layerRef.current = null;
+      }
+    };
+  }, [map]);
+
+  useEffect(() => {
+    const layer = layerRef.current;
+    if (!points?.features?.length) {
+      if (layer) {
+        map.removeLayer(layer);
+        layerRef.current = null;
+      }
+      return;
     }
-    if (!points?.features?.length) return undefined;
-    const layer = L.geoJSON(points as GeoJSON.GeoJsonObject, {
+    if (layer) {
+      layer.clearLayers();
+      layer.addData(points as GeoJSON.GeoJsonObject);
+      return;
+    }
+    const created = L.geoJSON(points as GeoJSON.GeoJsonObject, {
       pointToLayer: (_feature, latlng) => L.circleMarker(latlng, {
         radius: 7,
         color: '#0f766e',
@@ -33,12 +50,8 @@ export default function PointShopLayer({ points, onPointSelected }: PointShopLay
         marker.on('click', () => clickRef.current(feature as PointShopFeature));
       }
     });
-    layer.addTo(map);
-    layerRef.current = layer;
-    return () => {
-      if (layerRef.current) map.removeLayer(layerRef.current);
-      layerRef.current = null;
-    };
+    created.addTo(map);
+    layerRef.current = created;
   }, [map, points]);
 
   return null;

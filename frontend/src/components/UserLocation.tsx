@@ -7,19 +7,8 @@ interface UserLocationProps {
   onViewportChange: (bounds: { minLon: number; minLat: number; maxLon: number; maxLat: number }) => void;
 }
 
-function FitToLocation({ gps }: { gps: GpsState }) {
-  const map = useMap();
-  useEffect(() => {
-    if (gps.position) {
-      map.panTo([gps.position.lat, gps.position.lon], { animate: false });
-    }
-  }, [map, gps.position]);
-  return null;
-}
-
 export default function UserLocation({ gps, onViewportChange }: UserLocationProps) {
   const map = useMap();
-  const position = gps.position;
 
   useEffect(() => {
     const onMove = () => {
@@ -37,10 +26,10 @@ export default function UserLocation({ gps, onViewportChange }: UserLocationProp
     };
   }, [map, onViewportChange]);
 
-  if (!position) return <FitToLocation gps={gps} />;
+  if (!gps.position) return null;
+  const position = gps.position;
   return (
     <>
-      <FitToLocation gps={gps} />
       <CircleMarker
         center={[position.lat, position.lon]}
         radius={8}

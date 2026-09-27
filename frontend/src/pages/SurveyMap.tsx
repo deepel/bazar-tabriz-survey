@@ -78,6 +78,9 @@ export default function SurveyMap() {
   const [viewport, setViewport] = useState<Viewport | null>(null);
   const pointBoundsRef = useRef<Viewport | null>(null);
   const pointLoadTimer = useRef<number | undefined>(undefined);
+  const shopsLoadTimer = useRef<number | undefined>(undefined);
+  const shopsRequestRef = useRef<AbortController | null>(null);
+  const pointRequestRef = useRef<AbortController | null>(null);
   const [unread, setUnread] = useState(0);
   const [activeAssignments, setActiveAssignments] = useState<Assignment[]>([]);
   const [assignmentPreview, setAssignmentPreview] = useState<AssignmentPreview | null>(null);
@@ -133,15 +136,20 @@ export default function SurveyMap() {
 
   const fetchShops = useCallback(
     async (bounds?: Viewport) => {
+      shopsRequestRef.current?.abort();
+      const controller = new AbortController();
+      shopsRequestRef.current = controller;
+      const signal = controller.signal;
       const bbox = bounds
         ? `?bbox=${bounds.minLon},${bounds.minLat},${bounds.maxLon},${bounds.maxLat}`
         : '';
       try {
-        const result = await api.get<ShopsResponse>(`/api/shops${bbox}`);
+        const result = await api.get<ShopsResponse>(`/api/shops${bbox}`, { signal });
         setShops(result);
         setLoadError(null);
         return result;
       } catch (err) {
+        if (signal.aborted) return null;
         if (isUnauthorized(err)) {
           navigate('/login', { replace: true });
           return null;
@@ -154,18 +162,23 @@ export default function SurveyMap() {
   );
 
   const fetchPointLayers = useCallback(async (bounds: Viewport) => {
+    pointRequestRef.current?.abort();
+    const controller = new AbortController();
+    pointRequestRef.current = controller;
+    const signal = controller.signal;
     const bbox = `?bbox=${bounds.minLon},${bounds.minLat},${bounds.maxLon},${bounds.maxLat}`;
     const [shopsResult, servicesResult, doorsResult] = await Promise.all([
       pointVisible
-        ? api.get<PointShopsResponse>(`/api/point-shops${bbox}`).catch(() => null)
+        ? api.get<PointShopsResponse>(`/api/point-shops${bbox}`, { signal }).catch(() => null)
         : Promise.resolve(null),
       serviceVisible
-        ? api.get<ServicePointsResponse>(`/api/service-points${bbox}`).catch(() => null)
+        ? api.get<ServicePointsResponse>(`/api/service-points${bbox}`, { signal }).catch(() => null)
         : Promise.resolve(null),
       doorVisible
-        ? api.get<DoorPointsResponse>(`/api/door-points${bbox}`).catch(() => null)
+        ? api.get<DoorPointsResponse>(`/api/door-points${bbox}`, { signal }).catch(() => null)
         : Promise.resolve(null)
     ]);
+    if (signal.aborted) return;
     if (shopsResult) setPointShops(shopsResult);
     if (servicesResult) setServicePoints(servicesResult);
     if (doorsResult) setDoorPoints(doorsResult);
@@ -186,10 +199,16 @@ export default function SurveyMap() {
     })();
   }, [fetchActiveAssignments, fetchShops]);
 
-  // Load only the shops inside the current viewport on pan; fall back to a
-  // full request (capped) if the viewport was never reported yet.
+  // Load the shops inside the current viewport on pan; fall back to a full
+  // request (capped) if the viewport was never reported yet. Panning fires
+  // many moveend events, so the request itself is debounced; repeated and
+  // previously superseded requests are cancelled via AbortController.
   useEffect(() => {
-    if (viewport) void fetchShops(viewport);
+    if (!viewport) return;
+    if (shopsLoadTimer.current !== undefined) window.clearTimeout(shopsLoadTimer.current);
+    shopsLoadTimer.current = window.setTimeout(() => {
+      void fetchShops(viewport);
+    }, 200);
   }, [viewport, fetchShops]);
 
   const onViewportChange = useCallback((bounds: Viewport) => {
@@ -214,6 +233,9 @@ export default function SurveyMap() {
 
   useEffect(() => () => {
     if (pointLoadTimer.current !== undefined) window.clearTimeout(pointLoadTimer.current);
+    if (shopsLoadTimer.current !== undefined) window.clearTimeout(shopsLoadTimer.current);
+    shopsRequestRef.current?.abort();
+    pointRequestRef.current?.abort();
   }, []);
 
   const handleSaved = useCallback(() => {

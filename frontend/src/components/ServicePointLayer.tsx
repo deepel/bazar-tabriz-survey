@@ -20,11 +20,24 @@ export default function ServicePointLayer({ points, onPointSelected }: ServicePo
   clickRef.current = onPointSelected;
 
   useEffect(() => {
-    layerRef.current?.removeFrom(map);
-    layerRef.current = null;
-    if (!points?.features?.length) return undefined;
+    return () => {
+      if (layerRef.current) {
+        layerRef.current.removeFrom(map);
+        layerRef.current = null;
+      }
+    };
+  }, [map]);
 
-    const layer = L.layerGroup();
+  useEffect(() => {
+    const layer = layerRef.current;
+    if (!points?.features?.length) {
+      if (layer) {
+        layer.removeFrom(map);
+        layerRef.current = null;
+      }
+      return;
+    }
+    const markers: L.Marker[] = [];
     for (const feature of points.features) {
       const [lon, lat] = feature.geometry.coordinates;
       const marker = L.marker([lat, lon], {
@@ -39,14 +52,16 @@ export default function ServicePointLayer({ points, onPointSelected }: ServicePo
       });
       marker.bindTooltip(serviceLabel(feature.properties.service_type), { direction: 'top', offset: [0, -10] });
       marker.on('click', () => clickRef.current(feature));
-      layer.addLayer(marker);
+      markers.push(marker);
     }
-    layer.addTo(map);
-    layerRef.current = layer;
-    return () => {
-      layer.removeFrom(map);
-      layerRef.current = null;
-    };
+    if (layer) {
+      layer.clearLayers();
+      for (const marker of markers) layer.addLayer(marker);
+      return;
+    }
+    const created = L.layerGroup(markers);
+    created.addTo(map);
+    layerRef.current = created;
   }, [map, points]);
 
   return null;
